@@ -31,10 +31,31 @@ Para produção com autenticação anónima:
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+    // Coleção raiz de fotos
     match /photos/{document=**} {
       allow read: if true;
-      allow write: if request.auth != null;
-      allow delete: if request.auth != null;
+      allow write, delete: if request.auth != null;
+    }
+  }
+}
+```
+
+**Se continuar com erro de permissões, tente adicionar também o caminho antigo:**
+
+```javascript
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Coleção raiz
+    match /photos/{document=**} {
+      allow read: if true;
+      allow write, delete: if request.auth != null;
+    }
+    
+    // Caminho antigo (se existir)
+    match /artifacts/{document=**} {
+      allow read: if true;
+      allow write, delete: if request.auth != null;
     }
   }
 }
@@ -46,16 +67,17 @@ service cloud.firestore {
    - Firestore Database → Rules
    - Copie e cole uma das soluções acima
    - Clique em **Publish**
-   - ⏳ Aguarde 30 segundos para propagação
+   - ⏳ Aguarde 30-60 segundos para propagação
 
-2. **Verificar Propagação:**
-   - Feche completamente o browser
-   - Abra incógnito/privado
-   - Recarregue a página
+2. **⚠️ IMPORTANTE - Limpar Cache:**
+   - Feche **COMPLETAMENTE** o browser
+   - Ou use **DevTools → Application → Clear site data**
+   - Abra em **Incógnito/Privado** (sem cache)
+   - Recarregue a página (Ctrl+Shift+R)
 
 3. **Verificar Autenticação:**
    - Abra DevTools (F12) → Console
-   - Procure por: `✅ Utilizador autenticado`
+   - Procure por: `✅ Utilizador autenticado: <UID>`
    - Se não vir, a autenticação anónima falhou
 
 ## ✅ Solução 3: Adicionar Mais Coleções (Se Necessário)

@@ -546,14 +546,14 @@
                 if (db) {
                     try {
                         console.log('🔍 Procurando coleção "photos"...');
-                        // Tentar primeiro o caminho antigo
-                        let DocsRef = collection(db, 'artifacts', appId, 'public', 'data', 'photos');
+                        // Tentar primeiro o caminho DIRETO (mais comum)
+                        let DocsRef = collection(db, 'photos');
                         let snapshot = await getDocs(DocsRef);
                         
-                        // Se vazio, tentar o caminho direto
+                        // Se vazio, tentar o caminho antigo
                         if (snapshot.empty) {
-                            console.log('⚠️ Caminho antigo vazio, tentando "photos" direto...');
-                            DocsRef = collection(db, 'photos');
+                            console.log('⚠️ Caminho direto vazio, tentando caminho antigo...');
+                            DocsRef = collection(db, 'artifacts', appId, 'public', 'data', 'photos');
                             snapshot = await getDocs(DocsRef);
                         }
                         
