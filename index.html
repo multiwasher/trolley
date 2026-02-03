@@ -433,10 +433,6 @@
 
                 // Buscar dados do Firebase
                 if (user && db) {
-                    const q = collection(db, 'artifacts', appId, 'public', 'data', 'photos');
-                    const querySnapshot = await getDoc(q).catch(() => null);
-                    
-                    // Alternativa: usar getDocs se a estrutura permitir
                     try {
                         const DocsRef = collection(db, 'artifacts', appId, 'public', 'data', 'photos');
                         const snapshot = await getDocs(DocsRef);
