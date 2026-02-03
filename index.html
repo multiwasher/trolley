@@ -104,7 +104,6 @@
     <!-- Tabs de Navegação -->
     <div class="tabs-nav border-b border-white/10 sticky top-[72px] z-30 flex justify-around shadow-md">
         <button id="tab-registo" class="py-4 px-6 text-xs font-black uppercase tracking-widest tab-active transition-all">Registo</button>
-        <button id="tab-home" class="py-4 px-6 text-xs font-black uppercase tracking-widest text-slate-400 transition-all">HOME</button>
         <button id="tab-arquivo" class="py-4 px-6 text-xs font-black uppercase tracking-widest text-slate-400 transition-all">Arquivo Local</button>
     </div>
 
@@ -296,31 +295,26 @@
 
         function switchTab(tab) {
             const isRegisto = tab === 'registo';
-            const isHome = tab === 'home';
-            
             document.getElementById('tab-registo').className = isRegisto ? 'py-4 px-6 text-xs font-black uppercase tracking-widest tab-active transition-all' : 'py-4 px-6 text-xs font-black uppercase tracking-widest text-slate-400 transition-all';
-            document.getElementById('tab-home').className = isHome ? 'py-4 px-6 text-xs font-black uppercase tracking-widest tab-active transition-all' : 'py-4 px-6 text-xs font-black uppercase tracking-widest text-slate-400 transition-all';
-            document.getElementById('tab-arquivo').className = (tab === 'arquivo') ? 'py-4 px-6 text-xs font-black uppercase tracking-widest tab-active transition-all' : 'py-4 px-6 text-xs font-black uppercase tracking-widest text-slate-400 transition-all';
+            document.getElementById('tab-arquivo').className = !isRegisto ? 'py-4 px-6 text-xs font-black uppercase tracking-widest tab-active transition-all' : 'py-4 px-6 text-xs font-black uppercase tracking-widest text-slate-400 transition-all';
             
-            document.getElementById('setup-screen').classList.toggle('hidden', !isHome && !(!isRegisto && !isHome && trolleyId === ""));
-            document.getElementById('app-container').classList.toggle('hidden', !isRegisto || !trolleyId);
-            document.getElementById('archive-container').classList.toggle('hidden', tab !== 'arquivo');
-            document.getElementById('footer-nav').classList.toggle('hidden', !isRegisto || !trolleyId);
-            
-            if (tab === 'arquivo') {
+            document.getElementById('archive-container').classList.toggle('hidden', isRegisto);
+            if (isRegisto) {
+                if (trolleyId) {
+                    document.getElementById('app-container').classList.remove('hidden');
+                    document.getElementById('footer-nav').classList.remove('hidden');
+                } else {
+                    document.getElementById('setup-screen').classList.remove('hidden');
+                }
+            } else {
+                document.getElementById('setup-screen').classList.add('hidden');
+                document.getElementById('app-container').classList.add('hidden');
+                document.getElementById('footer-nav').classList.add('hidden');
                 renderArchive();
-            }
-            
-            if (isHome) {
-                trolleyId = "";
-                currentStep = 1;
-                Object.keys(currentPhotos).forEach(k => currentPhotos[k] = []);
-                document.getElementById('trolley-id-input').value = "";
             }
         }
 
         document.getElementById('tab-registo').addEventListener('click', () => switchTab('registo'));
-        document.getElementById('tab-home').addEventListener('click', () => switchTab('home'));
         document.getElementById('tab-arquivo').addEventListener('click', () => switchTab('arquivo'));
 
         document.getElementById('btn-start-registo').addEventListener('click', () => {
@@ -433,6 +427,10 @@
 
                 // Buscar dados do Firebase
                 if (user && db) {
+                    const q = collection(db, 'artifacts', appId, 'public', 'data', 'photos');
+                    const querySnapshot = await getDoc(q).catch(() => null);
+                    
+                    // Alternativa: usar getDocs se a estrutura permitir
                     try {
                         const DocsRef = collection(db, 'artifacts', appId, 'public', 'data', 'photos');
                         const snapshot = await getDocs(DocsRef);
