@@ -280,7 +280,7 @@
         let currentStep = 1;
         let trolleyId = "";
         
-        const sessionArchive = JSON.parse(localStorage.getItem('trolley_session_archive') || '{}');
+        let sessionArchive = JSON.parse(localStorage.getItem('trolley_session_archive') || '{}');
         const currentPhotos = { 1: [], 2: [], 3: [], 4: [] };
         
         const steps = {
@@ -556,9 +556,16 @@
                 const btn = e.target.closest('.btn-delete-id');
                 const id = btn.getAttribute('data-id');
                 if (confirm(`Tem a certeza que deseja apagar todo o arquivo do Trolley ${id}?`)) {
+                    // Recarregar o sessionArchive do localStorage
+                    sessionArchive = JSON.parse(localStorage.getItem('trolley_session_archive') || '{}');
+                    
                     // Remover do sessionArchive
                     delete sessionArchive[id];
+                    
+                    // Guardar no localStorage
                     localStorage.setItem('trolley_session_archive', JSON.stringify(sessionArchive));
+                    
+                    console.log(`Trolley ${id} apagado do arquivo local`);
                     
                     // Renderizar novamente o arquivo
                     renderArchive();
