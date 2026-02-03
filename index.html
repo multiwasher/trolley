@@ -218,9 +218,18 @@
 
     <!-- Arquivo -->
     <main id="archive-container" class="hidden flex-grow flex flex-col p-4 space-y-6 max-w-4xl mx-auto w-full">
-        <header class="flex flex-col gap-2">
-            <h2 class="text-2xl font-black text-white">Arquivo de Sessão</h2>
-            <p class="text-blue-200/60 text-xs font-bold uppercase tracking-widest">Fotos guardadas nesta sessão</p>
+        <header class="flex flex-col gap-2 items-start">
+            <div class="flex items-center gap-3 justify-between w-full">
+                <div class="flex flex-col gap-2">
+                    <h2 class="text-2xl font-black text-white">Arquivo de Sessão</h2>
+                    <p class="text-blue-200/60 text-xs font-bold uppercase tracking-widest">Fotos guardadas nesta sessão</p>
+                </div>
+                <button id="btn-refresh-archive" class="bg-blue-600 hover:bg-blue-700 text-white p-3 rounded-xl shadow-lg transition-all">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                    </svg>
+                </button>
+            </div>
         </header>
         <div id="archive-list" class="space-y-6"></div>
     </main>
@@ -422,18 +431,30 @@
             container.innerHTML = `<p class="text-white/40 text-center py-10 font-bold uppercase tracking-widest text-xs">A carregar dados...</p>`;
 
             try {
+                // Aguardar que o user esteja autenticado
+                await new Promise(resolve => {
+                    if (user) {
+                        resolve();
+                    } else {
+                        const unsubscribe = onAuthStateChanged(auth, (u) => {
+                            if (u) {
+                                unsubscribe();
+                                resolve();
+                            }
+                        });
+                    }
+                });
+
                 // Combinar dados do localStorage com dados do Firebase
                 const allArchive = { ...sessionArchive };
 
                 // Buscar dados do Firebase
-                if (user && db) {
-                    const q = collection(db, 'artifacts', appId, 'public', 'data', 'photos');
-                    const querySnapshot = await getDoc(q).catch(() => null);
-                    
-                    // Alternativa: usar getDocs se a estrutura permitir
+                if (db) {
                     try {
                         const DocsRef = collection(db, 'artifacts', appId, 'public', 'data', 'photos');
                         const snapshot = await getDocs(DocsRef);
+                        
+                        console.log(`Carregados ${snapshot.docs.length} documentos do Firebase`);
                         
                         snapshot.docs.forEach(doc => {
                             const data = doc.data();
@@ -453,7 +474,7 @@
                             }
                         });
                     } catch (e) {
-                        console.log('Firebase não disponível ou sem dados:', e);
+                        console.error('Erro ao carregar dados do Firebase:', e);
                     }
                 }
 
@@ -516,6 +537,10 @@
                 document.getElementById('video').srcObject.getTracks().forEach(t => t.stop());
             }
             document.getElementById('camera-modal').classList.add('hidden');
+        });
+
+        document.getElementById('btn-refresh-archive').addEventListener('click', () => {
+            renderArchive();
         });
 
         document.getElementById('btn-prev-step').addEventListener('click', () => {
