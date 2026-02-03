@@ -104,7 +104,7 @@
     <!-- Tabs de Navegação -->
     <div class="tabs-nav border-b border-white/10 sticky top-[72px] z-30 flex justify-around shadow-md">
         <button id="tab-registo" class="py-4 px-6 text-xs font-black uppercase tracking-widest tab-active transition-all">Registo</button>
-        <button id="tab-arquivo" class="py-4 px-6 text-xs font-black uppercase tracking-widest text-slate-400 transition-all">Arquivo Local</button>
+        <button id="tab-firebase" class="py-4 px-6 text-xs font-black uppercase tracking-widest text-slate-400 transition-all">Firebase</button>
     </div>
 
     <!-- Ecrã de Configuração Inicial -->
@@ -216,22 +216,22 @@
         </div>
     </main>
 
-    <!-- Arquivo -->
-    <main id="archive-container" class="hidden flex-grow flex flex-col p-4 space-y-6 max-w-4xl mx-auto w-full">
+    <!-- Firebase Storage -->
+    <main id="firebase-container" class="hidden flex-grow flex flex-col p-4 space-y-6 max-w-4xl mx-auto w-full">
         <header class="flex flex-col gap-2 items-start">
             <div class="flex items-center gap-3 justify-between w-full">
                 <div class="flex flex-col gap-2">
-                    <h2 class="text-2xl font-black text-white">Arquivo de Sessão</h2>
-                    <p class="text-blue-200/60 text-xs font-bold uppercase tracking-widest">Fotos guardadas nesta sessão</p>
+                    <h2 class="text-2xl font-black text-white">Firebase Storage</h2>
+                    <p class="text-blue-200/60 text-xs font-bold uppercase tracking-widest">Fotos armazenadas na nuvem</p>
                 </div>
-                <button id="btn-refresh-archive" class="bg-blue-600 hover:bg-blue-700 text-white p-3 rounded-xl shadow-lg transition-all">
+                <button id="btn-refresh-firebase" class="bg-blue-600 hover:bg-blue-700 text-white p-3 rounded-xl shadow-lg transition-all">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
                     </svg>
                 </button>
             </div>
         </header>
-        <div id="archive-list" class="space-y-6"></div>
+        <div id="firebase-list" class="space-y-6"></div>
     </main>
 
     <!-- Rodapé -->
@@ -261,7 +261,7 @@
     <script type="module">
         import { initializeApp, getApp, getApps } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, collection, addDoc, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyAzzIpUAm9rLpieMQ0z3H4hvY-amvaTkpM",
@@ -304,10 +304,11 @@
 
         function switchTab(tab) {
             const isRegisto = tab === 'registo';
+            const isFirebase = tab === 'firebase';
             document.getElementById('tab-registo').className = isRegisto ? 'py-4 px-6 text-xs font-black uppercase tracking-widest tab-active transition-all' : 'py-4 px-6 text-xs font-black uppercase tracking-widest text-slate-400 transition-all';
-            document.getElementById('tab-arquivo').className = !isRegisto ? 'py-4 px-6 text-xs font-black uppercase tracking-widest tab-active transition-all' : 'py-4 px-6 text-xs font-black uppercase tracking-widest text-slate-400 transition-all';
+            document.getElementById('tab-firebase').className = isFirebase ? 'py-4 px-6 text-xs font-black uppercase tracking-widest tab-active transition-all' : 'py-4 px-6 text-xs font-black uppercase tracking-widest text-slate-400 transition-all';
             
-            document.getElementById('archive-container').classList.toggle('hidden', isRegisto);
+            document.getElementById('firebase-container').classList.toggle('hidden', !isFirebase);
             if (isRegisto) {
                 if (trolleyId) {
                     document.getElementById('app-container').classList.remove('hidden');
@@ -319,12 +320,14 @@
                 document.getElementById('setup-screen').classList.add('hidden');
                 document.getElementById('app-container').classList.add('hidden');
                 document.getElementById('footer-nav').classList.add('hidden');
-                renderArchive();
+                if (tab === 'firebase') {
+                    renderFirebaseGallery();
+                }
             }
         }
 
         document.getElementById('tab-registo').addEventListener('click', () => switchTab('registo'));
-        document.getElementById('tab-arquivo').addEventListener('click', () => switchTab('arquivo'));
+        document.getElementById('tab-firebase').addEventListener('click', () => switchTab('firebase'));
 
         document.getElementById('btn-start-registo').addEventListener('click', () => {
             trolleyId = document.getElementById('trolley-id-input').value.trim().toUpperCase();
@@ -426,101 +429,6 @@
             updateUI();
         }
 
-        async function renderArchive() {
-            const container = document.getElementById('archive-list');
-            container.innerHTML = `<p class="text-white/40 text-center py-10 font-bold uppercase tracking-widest text-xs">A carregar dados...</p>`;
-
-            try {
-                // Aguardar que o user esteja autenticado
-                await new Promise(resolve => {
-                    if (user) {
-                        resolve();
-                    } else {
-                        const unsubscribe = onAuthStateChanged(auth, (u) => {
-                            if (u) {
-                                unsubscribe();
-                                resolve();
-                            }
-                        });
-                    }
-                });
-
-                // Combinar dados do localStorage com dados do Firebase
-                const allArchive = { ...sessionArchive };
-
-                // Buscar dados do Firebase
-                if (db) {
-                    try {
-                        const DocsRef = collection(db, 'artifacts', appId, 'public', 'data', 'photos');
-                        const snapshot = await getDocs(DocsRef);
-                        
-                        console.log(`Carregados ${snapshot.docs.length} documentos do Firebase`);
-                        
-                        snapshot.docs.forEach(doc => {
-                            const data = doc.data();
-                            const tid = data.trolleyId || 'Desconhecido';
-                            if (!allArchive[tid]) allArchive[tid] = [];
-                            
-                            // Evitar duplicatas
-                            const exists = allArchive[tid].some(p => p.url === data.imagem);
-                            if (!exists) {
-                                allArchive[tid].push({
-                                    step: data.step,
-                                    stepTitle: steps[data.step]?.title || `Passo ${data.step}`,
-                                    url: data.imagem,
-                                    timestamp: data.data_hora || new Date(data.timestamp).toLocaleString('pt-PT'),
-                                    filename: `Trolley_${tid}_P${data.step}_${data.timestamp || Date.now()}.jpg`
-                                });
-                            }
-                        });
-                    } catch (e) {
-                        console.error('Erro ao carregar dados do Firebase:', e);
-                    }
-                }
-
-                const keys = Object.keys(allArchive).sort().reverse();
-                if (keys.length === 0) {
-                    container.innerHTML = `<p class="text-white/40 text-center py-10 font-bold uppercase tracking-widest text-xs">Ainda não existem registos</p>`;
-                    return;
-                }
-
-                container.innerHTML = keys.map(id => `
-                    <div class="bg-white rounded-[2rem] overflow-hidden text-slate-800 shadow-xl">
-                        <div class="bg-slate-50 px-6 py-4 font-black uppercase flex justify-between items-center border-b border-slate-100">
-                            <span>ID: ${id}</span>
-                            <div class="flex items-center gap-3">
-                                <span class="text-[10px] text-slate-400">${allArchive[id].length} Fotos</span>
-                                <button class="btn-delete-id bg-red-500 hover:bg-red-600 text-white p-2 rounded-lg transition-colors" data-id="${id}" title="Apagar este ID">
-                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
-                                    </svg>
-                                </button>
-                            </div>
-                        </div>
-                        <div class="p-4 grid grid-cols-3 gap-3">
-                            ${allArchive[id].map(p => `
-                                <div class="relative group">
-                                    <img src="${p.url}" class="w-full h-24 object-cover rounded-xl shadow-sm border border-slate-100">
-                                    <div class="absolute inset-0 flex flex-col items-center justify-center bg-slate-900/80 opacity-0 group-hover:opacity-100 transition-opacity rounded-xl p-1 text-center">
-                                        <p class="text-[10px] text-white font-bold mb-1">${p.stepTitle}</p>
-                                        <a href="${p.url}" download="${p.filename || 'foto_trolley.jpg'}" 
-                                           class="text-white hover:text-blue-400 transition-colors">
-                                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
-                                            </svg>
-                                        </a>
-                                    </div>
-                                </div>
-                            `).join('')}
-                        </div>
-                    </div>
-                `).join('');
-            } catch (error) {
-                console.error('Erro ao carregar arquivo:', error);
-                container.innerHTML = `<p class="text-white/40 text-center py-10 font-bold uppercase tracking-widest text-xs">Erro ao carregar dados</p>`;
-            }
-        }
-
         document.getElementById('btn-shutter').addEventListener('click', () => {
             const v = document.getElementById('video');
             const c = document.getElementById('canvas');
@@ -546,29 +454,151 @@
             document.getElementById('camera-modal').classList.add('hidden');
         });
 
-        document.getElementById('btn-refresh-archive').addEventListener('click', () => {
-            renderArchive();
+        async function renderFirebaseGallery() {
+            const container = document.getElementById('firebase-list');
+            container.innerHTML = `<p class="text-white/40 text-center py-10 font-bold uppercase tracking-widest text-xs">A carregar dados...</p>`;
+
+            try {
+                // Aguardar que o user esteja autenticado
+                await new Promise(resolve => {
+                    if (user) {
+                        resolve();
+                    } else {
+                        const unsubscribe = onAuthStateChanged(auth, (u) => {
+                            if (u) {
+                                unsubscribe();
+                                resolve();
+                            }
+                        });
+                    }
+                });
+
+                // Buscar dados do Firebase
+                const firebasePhotos = {};
+                const docIds = {}; // Guardar os IDs dos documentos
+                if (db) {
+                    try {
+                        // Tentar primeiro o caminho antigo
+                        let DocsRef = collection(db, 'artifacts', appId, 'public', 'data', 'photos');
+                        let snapshot = await getDocs(DocsRef);
+                        
+                        // Se vazio, tentar o caminho direto
+                        if (snapshot.empty) {
+                            DocsRef = collection(db, 'photos');
+                            snapshot = await getDocs(DocsRef);
+                        }
+                        
+                        console.log(`Carregados ${snapshot.docs.length} documentos do Firebase`);
+                        
+                        snapshot.docs.forEach(d => {
+                            const data = d.data();
+                            const tid = data.trolleyId || 'Desconhecido';
+                            if (!firebasePhotos[tid]) {
+                                firebasePhotos[tid] = [];
+                                docIds[tid] = [];
+                            }
+                            
+                            firebasePhotos[tid].push({
+                                step: data.step,
+                                stepTitle: steps[data.step]?.title || `Passo ${data.step}`,
+                                url: data.imagem,
+                                timestamp: data.data_hora || new Date(data.timestamp).toLocaleString('pt-PT'),
+                                filename: `Trolley_${tid}_P${data.step}_${data.timestamp || Date.now()}.jpg`
+                            });
+                            docIds[tid].push(d.id);
+                        });
+                    } catch (e) {
+                        console.error('Erro ao carregar dados do Firebase:', e);
+                    }
+                }
+
+                const keys = Object.keys(firebasePhotos).sort().reverse();
+                if (keys.length === 0) {
+                    container.innerHTML = `<p class="text-white/40 text-center py-10 font-bold uppercase tracking-widest text-xs">Ainda não existem registos no Firebase</p>`;
+                    return;
+                }
+
+                container.innerHTML = keys.map(id => `
+                    <div class="bg-white rounded-[2rem] overflow-hidden text-slate-800 shadow-xl">
+                        <div class="bg-slate-50 px-6 py-4 font-black uppercase flex justify-between items-center border-b border-slate-100">
+                            <span>ID: ${id}</span>
+                            <span class="text-[10px] text-slate-400">${firebasePhotos[id].length} Fotos</span>
+                        </div>
+                        <div class="p-4 grid grid-cols-3 gap-3">
+                            ${firebasePhotos[id].map((p, i) => `
+                                <div class="relative group">
+                                    <img src="${p.url}" class="w-full h-24 object-cover rounded-xl shadow-sm border border-slate-100">
+                                    <button class="btn-delete-photo absolute -top-2 -right-2 bg-red-500 hover:bg-red-600 text-white w-7 h-7 rounded-full text-xs shadow-md opacity-0 group-hover:opacity-100 transition-opacity" 
+                                            data-docid="${docIds[id][i]}" 
+                                            data-trolleyid="${id}"
+                                            title="Apagar esta foto">
+                                        ✕
+                                    </button>
+                                    <div class="absolute inset-0 flex flex-col items-center justify-center bg-slate-900/80 opacity-0 group-hover:opacity-100 transition-opacity rounded-xl p-1 text-center">
+                                        <p class="text-[10px] text-white font-bold mb-1">${p.stepTitle}</p>
+                                        <p class="text-[9px] text-white/70 mb-2">${p.timestamp}</p>
+                                        <a href="${p.url}" download="${p.filename || 'foto_trolley.jpg'}" 
+                                           class="text-white hover:text-blue-400 transition-colors">
+                                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+                                            </svg>
+                                        </a>
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                `).join('');
+            } catch (error) {
+                console.error('Erro ao carregar Firebase:', error);
+                if (error.code === 'permission-denied') {
+                    container.innerHTML = `
+                        <div class="bg-red-50 rounded-[2rem] p-6 text-center border-2 border-red-200">
+                            <p class="text-2xl mb-2">🔒</p>
+                            <p class="text-slate-800 font-black mb-2">Erro de Permissões</p>
+                            <p class="text-slate-600 text-sm mb-4">As regras de Firestore precisam ser configuradas para permitir leitura.</p>
+                            <p class="text-xs text-slate-500 bg-white p-3 rounded-lg mb-4">
+                                Ver <strong>FIRESTORE_RULES.md</strong> para instruções de configuração
+                            </p>
+                            <button onclick="location.reload()" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-bold">
+                                ↻ Tentar Novamente
+                            </button>
+                        </div>
+                    `;
+                } else {
+                    container.innerHTML = `<p class="text-white/40 text-center py-10 font-bold uppercase tracking-widest text-xs">Erro: ${error.message}</p>`;
+                }
+            }
+        }
+
+        document.getElementById('btn-refresh-firebase').addEventListener('click', () => {
+            renderFirebaseGallery();
         });
 
-        // Event listener para apagar um ID do arquivo
-        document.addEventListener('click', (e) => {
-            if (e.target.closest('.btn-delete-id')) {
-                const btn = e.target.closest('.btn-delete-id');
-                const id = btn.getAttribute('data-id');
-                if (confirm(`Tem a certeza que deseja apagar todo o arquivo do Trolley ${id}?`)) {
-                    // Recarregar o sessionArchive do localStorage
-                    sessionArchive = JSON.parse(localStorage.getItem('trolley_session_archive') || '{}');
-                    
-                    // Remover do sessionArchive
-                    delete sessionArchive[id];
-                    
-                    // Guardar no localStorage
-                    localStorage.setItem('trolley_session_archive', JSON.stringify(sessionArchive));
-                    
-                    console.log(`Trolley ${id} apagado do arquivo local`);
-                    
-                    // Renderizar novamente o arquivo
-                    renderArchive();
+        // Event listener para apagar fotos individualmente
+        document.addEventListener('click', async (e) => {
+            if (e.target.closest('.btn-delete-photo')) {
+                const btn = e.target.closest('.btn-delete-photo');
+                const docId = btn.getAttribute('data-docid');
+                const trolleyId = btn.getAttribute('data-trolleyid');
+                
+                if (confirm(`Tem a certeza que deseja apagar esta foto?`)) {
+                    try {
+                        // Determinar qual coleção usar
+                        let docRef = doc(db, 'photos', docId);
+                        await deleteDoc(docRef);
+                        
+                        console.log(`Foto ${docId} apagada com sucesso`);
+                        // Recarregar a galeria
+                        renderFirebaseGallery();
+                    } catch (error) {
+                        console.error('Erro ao apagar foto:', error);
+                        if (error.code === 'permission-denied') {
+                            alert('Sem permissão para apagar. Verifique as regras de Firestore.');
+                        } else {
+                            alert('Erro ao apagar foto: ' + error.message);
+                        }
+                    }
                 }
             }
         });
