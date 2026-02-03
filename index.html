@@ -521,13 +521,18 @@
             container.innerHTML = `<p class="text-white/40 text-center py-10 font-bold uppercase tracking-widest text-xs">A carregar dados...</p>`;
 
             try {
+                console.log('🔄 Iniciando carregamento do Firebase...');
+                
                 // Aguardar que o user esteja autenticado
                 await new Promise(resolve => {
                     if (user) {
+                        console.log('✅ Utilizador já autenticado:', user.uid);
                         resolve();
                     } else {
+                        console.log('⏳ Aguardando autenticação do utilizador...');
                         const unsubscribe = onAuthStateChanged(auth, (u) => {
                             if (u) {
+                                console.log('✅ Utilizador autenticado:', u.uid);
                                 unsubscribe();
                                 resolve();
                             }
@@ -540,17 +545,19 @@
                 const docIds = {}; // Guardar os IDs dos documentos
                 if (db) {
                     try {
+                        console.log('🔍 Procurando coleção "photos"...');
                         // Tentar primeiro o caminho antigo
                         let DocsRef = collection(db, 'artifacts', appId, 'public', 'data', 'photos');
                         let snapshot = await getDocs(DocsRef);
                         
                         // Se vazio, tentar o caminho direto
                         if (snapshot.empty) {
+                            console.log('⚠️ Caminho antigo vazio, tentando "photos" direto...');
                             DocsRef = collection(db, 'photos');
                             snapshot = await getDocs(DocsRef);
                         }
                         
-                        console.log(`Carregados ${snapshot.docs.length} documentos do Firebase`);
+                        console.log(`✅ Carregados ${snapshot.docs.length} documentos do Firebase`);
                         
                         snapshot.docs.forEach(d => {
                             const data = d.data();
@@ -570,8 +577,13 @@
                             docIds[tid].push(d.id);
                         });
                     } catch (e) {
-                        console.error('Erro ao carregar dados do Firebase:', e);
+                        console.error('❌ Erro ao carregar dados do Firebase:', e);
+                        console.error('   Código do erro:', e.code);
+                        console.error('   Mensagem:', e.message);
+                        throw e;
                     }
+                } else {
+                    console.warn('⚠️ db não está inicializado');
                 }
 
                 const keys = Object.keys(firebasePhotos).sort().reverse();
