@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="pt-PT">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TrolleyCheck - Teste PWA</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gradient-to-b from-blue-500 to-black min-h-screen p-6">
+    <div class="max-w-2xl mx-auto">
+        <h1 class="text-4xl font-bold text-white mb-8 text-center">🧪 Teste PWA</h1>
+
+        <div class="grid grid-cols-1 gap-4 mb-8">
+            <div class="bg-white rounded-lg p-6 shadow-lg">
+                <h2 class="text-xl font-bold text-gray-800 mb-4">📊 Status Detectado</h2>
+                <div id="status" class="space-y-2 text-gray-700">
+                    <p>Carregando...</p>
+                </div>
+            </div>
+
+            <div class="bg-white rounded-lg p-6 shadow-lg">
+                <h2 class="text-xl font-bold text-gray-800 mb-4">📋 Informações Técnicas</h2>
+                <div id="info" class="space-y-2 text-sm text-gray-700 font-mono bg-gray-100 p-4 rounded">
+                    Carregando...
+                </div>
+            </div>
+
+            <div class="bg-white rounded-lg p-6 shadow-lg">
+                <h2 class="text-xl font-bold text-gray-800 mb-4">📝 Logs em Tempo Real</h2>
+                <div id="logs" class="bg-gray-900 text-green-400 p-4 rounded font-mono text-xs h-48 overflow-y-auto">
+                    <div>Iniciando testes...</div>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-4">
+                <button onclick="window.location.href='/'" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-lg transition">
+                    🏠 Voltar à App
+                </button>
+                <button onclick="location.reload()" class="bg-gray-600 hover:bg-gray-700 text-white font-bold py-3 rounded-lg transition">
+                    🔄 Recarregar
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let logs = [];
+
+        function addLog(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString('pt-PT');
+            const log = `[${timestamp}] ${message}`;
+            logs.push(log);
+            
+            const logsDiv = document.getElementById('logs');
+            logsDiv.innerHTML = logs.map(l => `<div>${l}</div>`).join('');
+            logsDiv.scrollTop = logsDiv.scrollHeight;
+            
+            console.log(`[${type.toUpperCase()}]`, message);
+        }
+
+        function updateStatus() {
+            const status = document.getElementById('status');
+            const info = document.getElementById('info');
+
+            // Detect environment
+            const isHTTPS = location.protocol === 'https:';
+            const isLocalhost = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
+            const isStandalone = window.navigator.standalone === true || window.matchMedia('(display-mode: standalone)').matches;
+            const hasServiceWorker = 'serviceWorker' in navigator;
+            const hasBeforeInstallPrompt = 'onbeforeinstallprompt' in window;
+            const hasManifest = !!document.querySelector('link[rel="manifest"]');
+
+            addLog(`Protocolo: ${location.protocol}`);
+            addLog(`Host: ${location.hostname}`);
+            addLog(`Ambiente: ${isLocalhost ? 'LOCALHOST' : 'PRODUÇÃO'}`);
+
+            status.innerHTML = `
+                <div class="flex items-center gap-2">
+                    <span>${isHTTPS ? '✅' : '⚠️'}</span>
+                    <span>HTTPS: ${isHTTPS ? 'Sim' : 'Não (necessário para produção)'}</span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <span>${hasServiceWorker ? '✅' : '❌'}</span>
+                    <span>Service Worker: ${hasServiceWorker ? 'Suportado' : 'Não suportado'}</span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <span>${hasManifest ? '✅' : '❌'}</span>
+                    <span>Manifest: ${hasManifest ? 'Detectado' : 'Não encontrado'}</span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <span>${isStandalone ? '✅' : '❌'}</span>
+                    <span>App Instalada: ${isStandalone ? 'Sim' : 'Não'}</span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <span>${hasBeforeInstallPrompt ? '✅' : '⚠️'}</span>
+                    <span>beforeinstallprompt: ${hasBeforeInstallPrompt ? 'Disponível' : 'Não disponível (normal em dev)'}</span>
+                </div>
+            `;
+
+            info.innerHTML = `
+                URL: ${location.href}<br>
+                User Agent: ${navigator.userAgent.substring(0, 80)}...<br>
+                Platform: ${navigator.platform}<br>
+                Language: ${navigator.language}
+            `;
+        }
+
+        // Listeners
+        window.addEventListener('beforeinstallprompt', (e) => {
+            addLog('✅ beforeinstallprompt disparado!', 'success');
+            e.preventDefault();
+        });
+
+        window.addEventListener('appinstalled', () => {
+            addLog('✅ App instalada com sucesso!', 'success');
+        });
+
+        // Service Worker
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('./sw.js')
+                .then(reg => {
+                    addLog(`✅ Service Worker registado: ${reg.scope}`);
+                    addLog(`   Status: ${reg.active ? 'Ativo' : 'Inativo'}`);
+                })
+                .catch(err => addLog(`❌ Erro SW: ${err.message}`, 'error'));
+        }
+
+        // Manifest
+        fetch('./manifest.json')
+            .then(r => {
+                if (r.ok) {
+                    addLog('✅ Manifest.json carregado com sucesso');
+                    return r.json();
+                }
+                throw new Error(`HTTP ${r.status}`);
+            })
+            .then(manifest => {
+                addLog(`   Nome: ${manifest.name}`);
+                addLog(`   Short name: ${manifest.short_name}`);
+                addLog(`   Display: ${manifest.display}`);
+            })
+            .catch(err => addLog(`❌ Erro manifest: ${err.message}`, 'error'));
+
+        // Initial update
+        updateStatus();
+        addLog('Testes iniciados com sucesso');
+    </script>
+</body>
+</html>

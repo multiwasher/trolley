@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="pt-PT">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TrolleyCheck - Debug Firebase</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            background: #1a1a2e;
+            color: #fff;
+            font-family: 'Monaco', monospace;
+        }
+        .log-item {
+            padding: 12px;
+            margin: 8px 0;
+            border-left: 4px solid;
+            border-radius: 4px;
+            font-size: 12px;
+        }
+        .log-success {
+            background: #0f3d1f;
+            border-color: #10b981;
+            color: #a7f3d0;
+        }
+        .log-error {
+            background: #3d0f0f;
+            border-color: #ef4444;
+            color: #fca5a5;
+        }
+        .log-info {
+            background: #0f2d3d;
+            border-color: #3b82f6;
+            color: #a5d8ff;
+        }
+        .log-warning {
+            background: #3d2d0f;
+            border-color: #f59e0b;
+            color: #fcd34d;
+        }
+    </style>
+</head>
+<body>
+    <div class="min-h-screen p-6 max-w-4xl mx-auto">
+        <h1 class="text-3xl font-bold mb-6">🐛 Debug Firebase - TrolleyCheck</h1>
+        
+        <div class="mb-8 grid grid-cols-2 gap-4">
+            <div class="bg-slate-800 p-4 rounded-lg">
+                <h2 class="text-sm font-bold text-slate-300 mb-2">Status Firebase</h2>
+                <div id="firebase-status" class="text-2xl">🔄</div>
+            </div>
+            <div class="bg-slate-800 p-4 rounded-lg">
+                <h2 class="text-sm font-bold text-slate-300 mb-2">Utilizador</h2>
+                <div id="user-status" class="text-lg">Carregando...</div>
+            </div>
+        </div>
+
+        <div class="bg-slate-800 p-6 rounded-lg">
+            <h2 class="text-lg font-bold mb-4">📝 Logs</h2>
+            <div id="logs" class="space-y-2 max-h-96 overflow-y-auto"></div>
+        </div>
+
+        <div class="mt-8 grid grid-cols-2 gap-4">
+            <button onclick="testFirebaseConnection()" class="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded font-bold">
+                🧪 Testar Conexão
+            </button>
+            <button onclick="clearLogs()" class="bg-red-600 hover:bg-red-700 px-4 py-2 rounded font-bold">
+                🗑️ Limpar Logs
+            </button>
+        </div>
+
+        <div class="mt-8 bg-slate-800 p-4 rounded-lg">
+            <h3 class="text-sm font-bold text-slate-300 mb-2">Configuração</h3>
+            <pre id="config" class="text-xs bg-black p-3 rounded overflow-x-auto">Carregando...</pre>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp, getApp, getApps } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, getDocs, query, limit } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyAzzIpUAm9rLpieMQ0z3H4hvY-amvaTkpM",
+            authDomain: "troll-a439d.firebaseapp.com",
+            projectId: "troll-a439d",
+            storageBucket: "troll-a439d.firebasestorage.app",
+            messagingSenderId: "436528007020",
+            appId: "1:436528007020:web:2b6ca0950f5de92427d549"
+        };
+
+        let app, auth, db, user = null;
+
+        function addLog(message, type = 'info') {
+            const logsDiv = document.getElementById('logs');
+            const logItem = document.createElement('div');
+            logItem.className = `log-item log-${type}`;
+            const time = new Date().toLocaleTimeString('pt-PT');
+            logItem.textContent = `[${time}] ${message}`;
+            logsDiv.insertBefore(logItem, logsDiv.firstChild);
+            console.log(`[${type.toUpperCase()}] ${message}`);
+        }
+
+        window.clearLogs = () => {
+            document.getElementById('logs').innerHTML = '';
+        };
+
+        async function initializeFirebase() {
+            try {
+                addLog('Inicializando Firebase...', 'info');
+                
+                if (getApps().length === 0) {
+                    app = initializeApp(firebaseConfig);
+                } else {
+                    app = getApp();
+                }
+                
+                auth = getAuth(app);
+                db = getFirestore(app);
+                
+                addLog('✅ Firebase inicializado com sucesso', 'success');
+                document.getElementById('firebase-status').innerHTML = '✅ Pronto';
+
+                // Mostrar configuração
+                document.getElementById('config').textContent = 
+                    'Project ID: ' + firebaseConfig.projectId + '\n' +
+                    'Auth Domain: ' + firebaseConfig.authDomain + '\n' +
+                    'Storage Bucket: ' + firebaseConfig.storageBucket;
+
+                // Autenticação
+                onAuthStateChanged(auth, async (u) => {
+                    if (u) {
+                        user = u;
+                        addLog(`✅ Utilizador autenticado: ${u.uid}`, 'success');
+                        document.getElementById('user-status').innerHTML = `
+                            <div class="text-green-400">✅ Autenticado</div>
+                            <div class="text-xs text-slate-300">${u.uid}</div>
+                        `;
+                    } else {
+                        addLog('Autenticando anonimamente...', 'info');
+                        try {
+                            await signInAnonymously(auth);
+                            addLog('✅ Autenticação anónima bem-sucedida', 'success');
+                        } catch (error) {
+                            addLog(`❌ Erro de autenticação: ${error.message}`, 'error');
+                            document.getElementById('user-status').innerHTML = '❌ Erro';
+                        }
+                    }
+                });
+
+            } catch (error) {
+                addLog(`❌ Erro ao inicializar: ${error.message}`, 'error');
+                document.getElementById('firebase-status').innerHTML = '❌ Erro';
+            }
+        }
+
+        window.testFirebaseConnection = async () => {
+            if (!db) {
+                addLog('❌ Firebase não inicializado', 'error');
+                return;
+            }
+
+            addLog('🧪 Testando leitura de "photos"...', 'info');
+            try {
+                const q = query(collection(db, 'photos'), limit(5));
+                const snapshot = await getDocs(q);
+                
+                if (snapshot.empty) {
+                    addLog('⚠️ Coleção "photos" existe mas está vazia', 'warning');
+                } else {
+                    addLog(`✅ Encontrados ${snapshot.size} documentos em "photos"`, 'success');
+                    snapshot.docs.slice(0, 3).forEach((doc, i) => {
+                        const data = doc.data();
+                        addLog(`   ${i + 1}. ${doc.id}: ${JSON.stringify(data).substring(0, 60)}...`, 'info');
+                    });
+                }
+            } catch (error) {
+                addLog(`❌ Erro ao ler: ${error.message}`, 'error');
+                
+                // Tentar diagnosticar
+                if (error.code === 'permission-denied') {
+                    addLog('💡 Sugestão: Verifique as regras de Firestore no console Firebase', 'warning');
+                } else if (error.code === 'failed-precondition') {
+                    addLog('💡 Sugestão: Firestore pode não estar ativado no projeto', 'warning');
+                }
+            }
+        };
+
+        // Inicializar ao carregar
+        addLog('🚀 Iniciando debug...', 'info');
+        await initializeFirebase();
+    </script>
+</body>
+</html>
