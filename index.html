@@ -4,7 +4,21 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>TrolleyCheck - Registo Profissional</title>
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#2563eb">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        // Registar o Service Worker
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/sw.js')
+                    .then(reg => console.log('✅ Service Worker registado:', reg))
+                    .catch(err => console.error('❌ Erro ao registar SW:', err));
+            });
+        }
+    </script>
     <style>
         :root {
             --primary: #2563eb;
@@ -94,7 +108,13 @@
             <span class="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Controlo de Qualidade</span>
         </div>
         
-        <div class="h-12 flex items-center justify-end">
+        <div class="h-12 flex items-center justify-end gap-3">
+            <button id="btn-install-pwa" class="hidden bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-bold text-sm flex items-center gap-2 transition-all shadow-md">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+                </svg>
+                Instalar
+            </button>
             <img src="https://static.wixstatic.com/media/a6967f_bd2c8d054c2e4bc2a992f21106be991e~mv2.png" 
                  alt="Logo" 
                  class="h-full w-auto object-contain">
@@ -627,6 +647,52 @@
             reader.onload = (event) => savePhoto(event.target.result);
             reader.readAsDataURL(file);
         });
+
+        // PWA Install Handler
+        let deferredPrompt;
+        const installBtn = document.getElementById('btn-install-pwa');
+
+        console.log('🔍 Procurando eventos de instalação PWA...');
+
+        window.addEventListener('beforeinstallprompt', (e) => {
+            console.log('✅ Evento beforeinstallprompt disparado');
+            e.preventDefault();
+            deferredPrompt = e;
+            installBtn.classList.remove('hidden');
+            console.log('✅ Botão de instalação visível');
+        });
+
+        installBtn.addEventListener('click', async () => {
+            console.log('🖱️ Botão de instalação clicado');
+            if (!deferredPrompt) {
+                console.warn('⚠️ deferredPrompt não está disponível');
+                return;
+            }
+
+            deferredPrompt.prompt();
+            const { outcome } = await deferredPrompt.userChoice;
+            console.log(`📋 Utilizador respondeu: ${outcome}`);
+            deferredPrompt = null;
+            installBtn.classList.add('hidden');
+        });
+
+        window.addEventListener('appinstalled', () => {
+            console.log('🎉 PWA foi instalada com sucesso');
+            deferredPrompt = null;
+            installBtn.classList.add('hidden');
+        });
+
+        // Debug: Mostrar informações sobre a PWA
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.getRegistrations().then(registrations => {
+                console.log(`📱 Service Workers registados: ${registrations.length}`);
+                registrations.forEach(reg => {
+                    console.log('  - Scope:', reg.scope);
+                });
+            });
+        } else {
+            console.warn('⚠️ Este browser não suporta Service Workers');
+        }
 
         initApp();
     </script>
