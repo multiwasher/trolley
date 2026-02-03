@@ -104,6 +104,7 @@
     <!-- Tabs de Navegação -->
     <div class="tabs-nav border-b border-white/10 sticky top-[72px] z-30 flex justify-around shadow-md">
         <button id="tab-registo" class="py-4 px-6 text-xs font-black uppercase tracking-widest tab-active transition-all">Registo</button>
+        <button id="tab-home" class="py-4 px-6 text-xs font-black uppercase tracking-widest text-slate-400 transition-all">HOME</button>
         <button id="tab-arquivo" class="py-4 px-6 text-xs font-black uppercase tracking-widest text-slate-400 transition-all">Arquivo Local</button>
     </div>
 
@@ -252,7 +253,7 @@
     <script type="module">
         import { initializeApp, getApp, getApps } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, collection, addDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, collection, addDoc, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyAzzIpUAm9rLpieMQ0z3H4hvY-amvaTkpM",
@@ -295,26 +296,31 @@
 
         function switchTab(tab) {
             const isRegisto = tab === 'registo';
-            document.getElementById('tab-registo').className = isRegisto ? 'py-4 px-6 text-xs font-black uppercase tracking-widest tab-active transition-all' : 'py-4 px-6 text-xs font-black uppercase tracking-widest text-slate-400 transition-all';
-            document.getElementById('tab-arquivo').className = !isRegisto ? 'py-4 px-6 text-xs font-black uppercase tracking-widest tab-active transition-all' : 'py-4 px-6 text-xs font-black uppercase tracking-widest text-slate-400 transition-all';
+            const isHome = tab === 'home';
             
-            document.getElementById('archive-container').classList.toggle('hidden', isRegisto);
-            if (isRegisto) {
-                if (trolleyId) {
-                    document.getElementById('app-container').classList.remove('hidden');
-                    document.getElementById('footer-nav').classList.remove('hidden');
-                } else {
-                    document.getElementById('setup-screen').classList.remove('hidden');
-                }
-            } else {
-                document.getElementById('setup-screen').classList.add('hidden');
-                document.getElementById('app-container').classList.add('hidden');
-                document.getElementById('footer-nav').classList.add('hidden');
+            document.getElementById('tab-registo').className = isRegisto ? 'py-4 px-6 text-xs font-black uppercase tracking-widest tab-active transition-all' : 'py-4 px-6 text-xs font-black uppercase tracking-widest text-slate-400 transition-all';
+            document.getElementById('tab-home').className = isHome ? 'py-4 px-6 text-xs font-black uppercase tracking-widest tab-active transition-all' : 'py-4 px-6 text-xs font-black uppercase tracking-widest text-slate-400 transition-all';
+            document.getElementById('tab-arquivo').className = (tab === 'arquivo') ? 'py-4 px-6 text-xs font-black uppercase tracking-widest tab-active transition-all' : 'py-4 px-6 text-xs font-black uppercase tracking-widest text-slate-400 transition-all';
+            
+            document.getElementById('setup-screen').classList.toggle('hidden', !isHome && !(!isRegisto && !isHome && trolleyId === ""));
+            document.getElementById('app-container').classList.toggle('hidden', !isRegisto || !trolleyId);
+            document.getElementById('archive-container').classList.toggle('hidden', tab !== 'arquivo');
+            document.getElementById('footer-nav').classList.toggle('hidden', !isRegisto || !trolleyId);
+            
+            if (tab === 'arquivo') {
                 renderArchive();
+            }
+            
+            if (isHome) {
+                trolleyId = "";
+                currentStep = 1;
+                Object.keys(currentPhotos).forEach(k => currentPhotos[k] = []);
+                document.getElementById('trolley-id-input').value = "";
             }
         }
 
         document.getElementById('tab-registo').addEventListener('click', () => switchTab('registo'));
+        document.getElementById('tab-home').addEventListener('click', () => switchTab('home'));
         document.getElementById('tab-arquivo').addEventListener('click', () => switchTab('arquivo'));
 
         document.getElementById('btn-start-registo').addEventListener('click', () => {
@@ -417,34 +423,80 @@
             updateUI();
         }
 
-        function renderArchive() {
+        async function renderArchive() {
             const container = document.getElementById('archive-list');
-            const keys = Object.keys(sessionArchive).reverse();
-            if (keys.length === 0) {
-                container.innerHTML = `<p class="text-white/40 text-center py-10 font-bold uppercase tracking-widest text-xs">Ainda não existem registos</p>`;
-                return;
+            container.innerHTML = `<p class="text-white/40 text-center py-10 font-bold uppercase tracking-widest text-xs">A carregar dados...</p>`;
+
+            try {
+                // Combinar dados do localStorage com dados do Firebase
+                const allArchive = { ...sessionArchive };
+
+                // Buscar dados do Firebase
+                if (user && db) {
+                    const q = collection(db, 'artifacts', appId, 'public', 'data', 'photos');
+                    const querySnapshot = await getDoc(q).catch(() => null);
+                    
+                    // Alternativa: usar getDocs se a estrutura permitir
+                    try {
+                        const DocsRef = collection(db, 'artifacts', appId, 'public', 'data', 'photos');
+                        const snapshot = await getDocs(DocsRef);
+                        
+                        snapshot.docs.forEach(doc => {
+                            const data = doc.data();
+                            const tid = data.trolleyId || 'Desconhecido';
+                            if (!allArchive[tid]) allArchive[tid] = [];
+                            
+                            // Evitar duplicatas
+                            const exists = allArchive[tid].some(p => p.url === data.imagem);
+                            if (!exists) {
+                                allArchive[tid].push({
+                                    step: data.step,
+                                    stepTitle: steps[data.step]?.title || `Passo ${data.step}`,
+                                    url: data.imagem,
+                                    timestamp: data.data_hora || new Date(data.timestamp).toLocaleString('pt-PT'),
+                                    filename: `Trolley_${tid}_P${data.step}_${data.timestamp || Date.now()}.jpg`
+                                });
+                            }
+                        });
+                    } catch (e) {
+                        console.log('Firebase não disponível ou sem dados:', e);
+                    }
+                }
+
+                const keys = Object.keys(allArchive).sort().reverse();
+                if (keys.length === 0) {
+                    container.innerHTML = `<p class="text-white/40 text-center py-10 font-bold uppercase tracking-widest text-xs">Ainda não existem registos</p>`;
+                    return;
+                }
+
+                container.innerHTML = keys.map(id => `
+                    <div class="bg-white rounded-[2rem] overflow-hidden text-slate-800 shadow-xl">
+                        <div class="bg-slate-50 px-6 py-4 font-black uppercase flex justify-between items-center border-b border-slate-100">
+                            <span>ID: ${id}</span>
+                            <span class="text-[10px] text-slate-400">${allArchive[id].length} Fotos</span>
+                        </div>
+                        <div class="p-4 grid grid-cols-3 gap-3">
+                            ${allArchive[id].map(p => `
+                                <div class="relative group">
+                                    <img src="${p.url}" class="w-full h-24 object-cover rounded-xl shadow-sm border border-slate-100">
+                                    <div class="absolute inset-0 flex flex-col items-center justify-center bg-slate-900/80 opacity-0 group-hover:opacity-100 transition-opacity rounded-xl p-1 text-center">
+                                        <p class="text-[10px] text-white font-bold mb-1">${p.stepTitle}</p>
+                                        <a href="${p.url}" download="${p.filename || 'foto_trolley.jpg'}" 
+                                           class="text-white hover:text-blue-400 transition-colors">
+                                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+                                            </svg>
+                                        </a>
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                `).join('');
+            } catch (error) {
+                console.error('Erro ao carregar arquivo:', error);
+                container.innerHTML = `<p class="text-white/40 text-center py-10 font-bold uppercase tracking-widest text-xs">Erro ao carregar dados</p>`;
             }
-            container.innerHTML = keys.map(id => `
-                <div class="bg-white rounded-[2rem] overflow-hidden text-slate-800 shadow-xl">
-                    <div class="bg-slate-50 px-6 py-4 font-black uppercase flex justify-between items-center border-b border-slate-100">
-                        <span>ID: ${id}</span>
-                        <span class="text-[10px] text-slate-400">${sessionArchive[id].length} Fotos</span>
-                    </div>
-                    <div class="p-4 grid grid-cols-3 gap-3">
-                        ${sessionArchive[id].map(p => `
-                            <div class="relative group">
-                                <img src="${p.url}" class="w-full h-24 object-cover rounded-xl shadow-sm border border-slate-100">
-                                <a href="${p.url}" download="${p.filename || 'foto_trolley.jpg'}" 
-                                   class="absolute inset-0 flex items-center justify-center bg-blue-600/60 opacity-0 group-hover:opacity-100 transition-opacity rounded-xl">
-                                    <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
-                                    </svg>
-                                </a>
-                            </div>
-                        `).join('')}
-                    </div>
-                </div>
-            `).join('');
         }
 
         document.getElementById('btn-shutter').addEventListener('click', () => {
