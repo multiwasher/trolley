@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>TrolleyCheck - Registo Profissional</title>
     <meta name="theme-color" content="#2563eb">
-    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="TrolleyCheck">
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'><rect fill='%232563eb' width='192' height='192'/><text x='50%' y='50%' dominant-baseline='middle' text-anchor='middle' font-size='100' font-weight='bold' fill='white' font-family='Arial'>T</text></svg>">
@@ -22,12 +22,15 @@
 
         // Criar manifest dinamicamente (workaround para GitHub Codespaces)
         function createManifest() {
+            // Obter a URL base do site
+            const baseUrl = window.location.origin;
+            
             const manifest = {
                 "name": "TrolleyCheck - Registo Profissional",
                 "short_name": "TrolleyCheck",
                 "description": "Aplicação de controlo de qualidade e registo profissional de trolleys",
-                "start_url": "/",
-                "scope": "/",
+                "start_url": baseUrl + "/",
+                "scope": baseUrl + "/",
                 "display": "standalone",
                 "orientation": "portrait",
                 "theme_color": "#2563eb",
@@ -52,7 +55,7 @@
             link.href = manifestUrl;
             document.head.appendChild(link);
             
-            console.log('✅ Manifest criado dinamicamente');
+            console.log('✅ Manifest criado:', manifest);
         }
         
         // Criar manifest no carregamento
@@ -692,33 +695,42 @@
         const installBtn = document.getElementById('btn-install-pwa');
 
         console.log('🔍 Procurando eventos de instalação PWA...');
+        console.log('Botão encontrado:', installBtn ? '✅' : '❌');
 
         window.addEventListener('beforeinstallprompt', (e) => {
-            console.log('✅ Evento beforeinstallprompt disparado');
+            console.log('✅ Evento beforeinstallprompt disparado!');
             e.preventDefault();
             deferredPrompt = e;
-            installBtn.classList.remove('hidden');
-            console.log('✅ Botão de instalação visível');
-        });
-
-        installBtn.addEventListener('click', async () => {
-            console.log('🖱️ Botão de instalação clicado');
-            if (!deferredPrompt) {
-                console.warn('⚠️ deferredPrompt não está disponível');
-                return;
+            
+            // Mostrar o botão
+            if (installBtn) {
+                installBtn.classList.remove('hidden');
+                console.log('✅ Botão de instalação visível');
             }
-
-            deferredPrompt.prompt();
-            const { outcome } = await deferredPrompt.userChoice;
-            console.log(`📋 Utilizador respondeu: ${outcome}`);
-            deferredPrompt = null;
-            installBtn.classList.add('hidden');
         });
+
+        if (installBtn) {
+            installBtn.addEventListener('click', async () => {
+                console.log('🖱️ Botão de instalação clicado');
+                if (!deferredPrompt) {
+                    console.warn('⚠️ deferredPrompt não está disponível');
+                    return;
+                }
+
+                deferredPrompt.prompt();
+                const { outcome } = await deferredPrompt.userChoice;
+                console.log(`📋 Utilizador respondeu: ${outcome}`);
+                deferredPrompt = null;
+                installBtn.classList.add('hidden');
+            });
+        }
 
         window.addEventListener('appinstalled', () => {
             console.log('🎉 PWA foi instalada com sucesso');
             deferredPrompt = null;
-            installBtn.classList.add('hidden');
+            if (installBtn) {
+                installBtn.classList.add('hidden');
+            }
         });
 
         // Debug: Mostrar informações sobre a PWA
