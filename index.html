@@ -350,6 +350,24 @@
         </div>
     </main>
 
+    <!-- Visualização de Fotos de um Registo -->
+    <main id="history-detail-container" class="hidden flex-grow flex flex-col p-4 space-y-6 max-w-4xl mx-auto w-full">
+        <header class="flex items-center gap-4">
+            <button id="btn-back-to-history" class="w-12 h-12 bg-white/90 backdrop-blur-md text-slate-700 rounded-2xl shadow-xl flex items-center justify-center border border-white/10 hover:bg-white transition-all">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M15 19l-7-7 7-7"></path></svg>
+            </button>
+            <div class="flex flex-col gap-2">
+                <h2 class="text-2xl font-black text-white">Fotos de Registo</h2>
+                <p id="detail-trolley-id" class="text-blue-200/60 text-xs font-bold uppercase tracking-widest">ID: ---</p>
+            </div>
+        </header>
+
+        <!-- Fotos Agrupadas por Passo -->
+        <div id="history-detail-list" class="space-y-6">
+            <!-- Preenchido dinamicamente -->
+        </div>
+    </main>
+
     <!-- Rodapé -->
     <footer id="footer-nav" class="hidden fixed bottom-6 left-6 right-6 z-40 flex gap-4">
         <button id="btn-prev-step" class="w-16 h-16 bg-white/90 backdrop-blur-md text-slate-400 rounded-2xl shadow-xl flex items-center justify-center border border-white/10 disabled:opacity-30">
@@ -455,6 +473,7 @@
             
             document.getElementById('firebase-container').classList.toggle('hidden', !isFirebase);
             document.getElementById('history-container').classList.toggle('hidden', !isHistory);
+            document.getElementById('history-detail-container').classList.add('hidden');
             
             if (isRegisto) {
                 if (trolleyId) {
@@ -649,10 +668,12 @@
                 listContainer.innerHTML = `
                     <tr>
                         <td colspan="3" class="px-6 py-10 text-center text-slate-400 font-bold uppercase tracking-widest text-xs">
-                            Sem registos disponíveis
+                            A carregar registos...
                         </td>
                     </tr>
                 `;
+                // Carregar dados do Firebase
+                loadHistoryFromFirebase();
                 return;
             }
 
@@ -663,7 +684,7 @@
                 const totalFotos = Array.isArray(photos) ? photos.filter(p => typeof p === 'object' && p.timestamp).length : 0;
                 
                 return `
-                    <tr class="border-b border-slate-100 hover:bg-slate-50 transition-all">
+                    <tr class="border-b border-slate-100 hover:bg-slate-50 transition-all cursor-pointer history-row" data-trolley="${trolleyId}">
                         <td class="px-6 py-4 font-black text-slate-800 uppercase">${trolleyId}</td>
                         <td class="px-6 py-4 text-slate-600 text-sm">${dataRegisto}</td>
                         <td class="px-6 py-4 text-center">
@@ -674,7 +695,191 @@
                     </tr>
                 `;
             }).join('');
+
+            // Adicionar event listeners aos rows
+            document.querySelectorAll('.history-row').forEach(row => {
+                row.addEventListener('click', () => {
+                    const trolleyId = row.getAttribute('data-trolley');
+                    showHistoryDetail(trolleyId);
+                });
+            });
+
+            // Carregar dados do Firebase para complementar
+            loadHistoryFromFirebase();
         }
+
+        async function loadHistoryFromFirebase() {
+            try {
+                // Aguardar que o user esteja autenticado
+                await new Promise(resolve => {
+                    if (user) {
+                        resolve();
+                    } else {
+                        const unsubscribe = onAuthStateChanged(auth, (u) => {
+                            if (u) {
+                                unsubscribe();
+                                resolve();
+                            }
+                        });
+                    }
+                });
+
+                if (!db) {
+                    console.warn('⚠️ Firestore não está inicializado');
+                    return;
+                }
+
+                // Buscar dados do Firebase
+                const firebasePhotos = {};
+                try {
+                    let DocsRef = collection(db, 'photos');
+                    let snapshot = await getDocs(DocsRef);
+                    
+                    // Se vazio, tentar o caminho antigo
+                    if (snapshot.empty) {
+                        DocsRef = collection(db, 'artifacts', appId, 'public', 'data', 'photos');
+                        snapshot = await getDocs(DocsRef);
+                    }
+                    
+                    snapshot.docs.forEach(d => {
+                        const data = d.data();
+                        const tid = data.trolleyId || 'Desconhecido';
+                        if (!firebasePhotos[tid]) {
+                            firebasePhotos[tid] = {
+                                photos: [],
+                                dates: []
+                            };
+                        }
+                        
+                        firebasePhotos[tid].photos.push({
+                            step: data.step,
+                            stepTitle: steps[data.step]?.title || `Passo ${data.step}`,
+                            url: data.imagem,
+                            timestamp: data.data_hora || new Date(data.timestamp).toLocaleString('pt-PT'),
+                            filename: `Trolley_${tid}_P${data.step}_${data.timestamp || Date.now()}.jpg`
+                        });
+
+                        if (data.data_hora || data.timestamp) {
+                            firebasePhotos[tid].dates.push(data.data_hora || new Date(data.timestamp).toLocaleString('pt-PT'));
+                        }
+                    });
+
+                    // Agregar registos do Firebase à tabela existente
+                    const listContainer = document.getElementById('history-list');
+                    const existingTrolleyIds = new Set(
+                        Array.from(listContainer.querySelectorAll('tr')).map(row => row.getAttribute('data-trolley')).filter(Boolean)
+                    );
+
+                    // Adicionar registos do Firebase que não estão no localStorage
+                    const firebaseOnlyIds = Object.keys(firebasePhotos).filter(id => !existingTrolleyIds.has(id));
+                    
+                    if (firebaseOnlyIds.length > 0) {
+                        const tbody = listContainer.parentElement;
+                        
+                        firebaseOnlyIds.forEach(trolleyId => {
+                            const photos = firebasePhotos[trolleyId];
+                            const dataRegisto = photos.dates.length > 0 ? photos.dates[0] : '---';
+                            const totalFotos = photos.photos.length;
+
+                            const tr = document.createElement('tr');
+                            tr.className = 'border-b border-slate-100 hover:bg-slate-50 transition-all cursor-pointer history-row';
+                            tr.setAttribute('data-trolley', trolleyId);
+                            tr.innerHTML = `
+                                <td class="px-6 py-4 font-black text-slate-800 uppercase">${trolleyId}</td>
+                                <td class="px-6 py-4 text-slate-600 text-sm">${dataRegisto}</td>
+                                <td class="px-6 py-4 text-center">
+                                    <span class="bg-blue-100 text-blue-600 font-black px-3 py-1 rounded-full text-xs">
+                                        ${totalFotos}
+                                    </span>
+                                </td>
+                            `;
+                            
+                            tr.addEventListener('click', () => {
+                                showHistoryDetailFromFirebase(trolleyId, firebasePhotos[trolleyId].photos);
+                            });
+
+                            tbody.appendChild(tr);
+                        });
+                    }
+
+                    // Guardar dados do Firebase no sessionArchive para acesso rápido
+                    Object.keys(firebasePhotos).forEach(trolleyId => {
+                        if (!sessionArchive[trolleyId]) {
+                            sessionArchive[trolleyId] = firebasePhotos[trolleyId].photos;
+                        }
+                    });
+
+                } catch (e) {
+                    console.error('❌ Erro ao carregar dados do Firebase:', e);
+                }
+            } catch (error) {
+                console.error('Erro ao carregar histórico do Firebase:', error);
+            }
+        }
+
+        function showHistoryDetailFromFirebase(trolleyId, photos) {
+            // Agrupar fotos por passo
+            const photosByStep = {};
+            photos.forEach(photo => {
+                if (photo.step) {
+                    if (!photosByStep[photo.step]) {
+                        photosByStep[photo.step] = [];
+                    }
+                    photosByStep[photo.step].push(photo);
+                }
+            });
+
+            // Renderizar a vista de detalhe
+            const detailContainer = document.getElementById('history-detail-list');
+            const stepsOrder = [1, 2, 3, 4];
+            
+            detailContainer.innerHTML = stepsOrder.map(step => {
+                const photosForStep = photosByStep[step] || [];
+                if (photosForStep.length === 0) return '';
+
+                const stepInfo = steps[step] || { icon: '📷', title: `Passo ${step}` };
+                return `
+                    <div class="bg-white rounded-3xl overflow-hidden shadow-xl border border-white/10">
+                        <div class="bg-gradient-to-r from-slate-50 to-slate-100 px-6 py-4 border-b border-slate-200 flex items-center gap-3">
+                            <span class="text-2xl">${stepInfo.icon}</span>
+                            <div>
+                                <h3 class="font-black text-slate-800 uppercase">${stepInfo.title}</h3>
+                                <p class="text-xs text-slate-500 font-bold">${photosForStep.length} foto${photosForStep.length !== 1 ? 's' : ''}</p>
+                            </div>
+                        </div>
+                        <div class="p-4 grid grid-cols-2 md:grid-cols-3 gap-3">
+                            ${photosForStep.map((photo, index) => `
+                                <div class="relative group">
+                                    <img src="${photo.url}" class="w-full h-40 object-cover rounded-xl shadow-sm border border-slate-100">
+                                    <div class="absolute inset-0 flex flex-col items-center justify-center bg-slate-900/80 opacity-0 group-hover:opacity-100 transition-opacity rounded-xl p-2 text-center">
+                                        <p class="text-[10px] text-white font-bold mb-1">${photo.timestamp}</p>
+                                        <a href="${photo.url}" download="${photo.filename || 'foto.jpg'}" 
+                                           class="text-white hover:text-blue-400 transition-colors">
+                                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+                                            </svg>
+                                        </a>
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            // Atualizar ID do trolley no cabeçalho
+            document.getElementById('detail-trolley-id').textContent = `ID: ${trolleyId}`;
+
+            // Mudar para a vista de detalhe
+            document.getElementById('history-container').classList.add('hidden');
+            document.getElementById('history-detail-container').classList.remove('hidden');
+        }
+
+        // Event listener para voltar ao histórico
+        document.getElementById('btn-back-to-history').addEventListener('click', () => {
+            document.getElementById('history-detail-container').classList.add('hidden');
+            document.getElementById('history-container').classList.remove('hidden');
+        });
 
         async function renderFirebaseGallery() {
             const container = document.getElementById('firebase-list');
