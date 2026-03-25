@@ -115,6 +115,11 @@
             background: rgba(255, 255, 255, 0.9);
             backdrop-filter: blur(10px);
         }
+        
+        /* Compensar espaço para tabs-nav fixa */
+        #setup-screen, #app-container {
+            padding-top: 5rem; /* ~80px para compensar a tabs-nav fixa */
+        }
         .history-row-unvisited {
             background: linear-gradient(90deg, rgba(59, 130, 246, 0.15) 0%, rgba(59, 130, 246, 0.05) 100%);
             box-shadow: inset 0 0 20px rgba(59, 130, 246, 0.1);
@@ -156,6 +161,56 @@
             align-items: center;
             justify-content: center;
         }
+        
+        /* Notificação de Foto Capturada */
+        .photo-toast {
+            animation: slideInUp 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+            animation-delay: 0.1s;
+        }
+        
+        .photo-toast.hide {
+            animation: slideOutDown 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards !important;
+        }
+        
+        @keyframes slideInUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        @keyframes slideOutDown {
+            from {
+                opacity: 1;
+                transform: translateY(0);
+            }
+            to {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+        }
+        
+        @keyframes pulse-check {
+            0% {
+                transform: scale(0.8);
+                opacity: 0;
+            }
+            50% {
+                transform: scale(1.1);
+            }
+            100% {
+                transform: scale(1);
+                opacity: 1;
+            }
+        }
+        
+        .photo-toast .icon-check {
+            animation: pulse-check 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
     </style>
 </head>
 <body class="min-h-screen flex flex-col pb-24">
@@ -168,11 +223,13 @@
         </div>
         
         <div class="h-12 flex items-center justify-end gap-3">
-            <button id="btn-install-pwa" class="hidden bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-bold text-sm flex items-center gap-2 transition-all shadow-md">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+            <!-- Icon de Alerta para PWA -->
+            <button id="btn-install-pwa" class="hidden relative w-8 h-8 text-slate-600 hover:text-blue-600 transition-colors" title="Instalar aplicação">
+                <svg class="w-full h-full" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17H20V5H4v12h5m-5 4h16"></path>
                 </svg>
-                Instalar
+                <!-- Ponto indicador -->
+                <span class="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full animate-pulse"></span>
             </button>
             <img src="https://static.wixstatic.com/media/a6967f_bd2c8d054c2e4bc2a992f21106be991e~mv2.png" 
                  alt="Logo" 
@@ -181,9 +238,8 @@
     </nav>
 
     <!-- Tabs de Navegação -->
-    <div class="tabs-nav border-b border-white/10 sticky top-[72px] z-30 flex justify-around items-center shadow-md">
+    <div class="tabs-nav hidden border-b border-white/10 fixed top-[72px] left-0 right-0 z-30 flex justify-around items-center shadow-md bg-white/90 backdrop-blur-md">
         <button id="tab-registo" class="py-4 px-6 text-xs font-black uppercase tracking-widest tab-active transition-all">Registo</button>
-        <button id="tab-firebase" class="py-4 px-6 text-xs font-black uppercase tracking-widest text-slate-400 transition-all">Base de Dados</button>
         <div class="flex-grow border-l border-white/10 px-6 py-4 flex items-center justify-between">
             <button id="btn-calendar" class="flex items-center gap-2 hover:opacity-80 transition-all cursor-pointer">
                 <span class="text-lg">📅</span>
@@ -218,6 +274,10 @@
                 <button id="btn-start-registo" class="btn-primary w-full max-w-xs text-white font-black py-5 rounded-2xl text-lg flex items-center justify-center gap-3 transition-all mx-auto">
                     Iniciar Registo 
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
+                </button>
+                <button id="btn-view-history" class="w-full max-w-xs text-slate-400 font-bold py-3 rounded-2xl text-sm flex items-center justify-center gap-2 transition-all mx-auto hover:text-slate-600">
+                    <span>📅</span>
+                    <span>Ver Histórico de Registos</span>
                 </button>
             </div>
         </div>
@@ -262,7 +322,7 @@
         <div id="step-content" class="bg-white step-card rounded-[2.5rem] shadow-xl border border-white/10 p-6 space-y-6">
             <div class="flex justify-between items-center">
                 <div class="bg-blue-50 px-4 py-1 rounded-full">
-                    <span id="step-number" class="text-blue-600 font-black text-[10px] uppercase tracking-widest leading-none">Passo 1 de 4</span>
+                    <span id="step-number" class="text-blue-600 font-black text-[10px] uppercase tracking-widest leading-none">Passo 1 de 5</span>
                 </div>
                 <span id="step-icon" class="text-3xl">🛒</span>
             </div>
@@ -308,82 +368,7 @@
         </div>
     </main>
 
-    <!-- Base de Dados -->
-    <main id="firebase-container" class="hidden flex-grow flex flex-col p-4 space-y-6 max-w-4xl mx-auto w-full">
-        <header class="flex flex-col gap-2 items-start">
-            <div class="flex items-center gap-3 justify-between w-full">
-                <div class="flex flex-col gap-2">
-                    <h2 class="text-2xl font-black text-white">Base de Dados</h2>
-                    <p class="text-blue-200/60 text-xs font-bold uppercase tracking-widest">Fotos armazenadas na nuvem</p>
-                </div>
-                <button id="btn-refresh-firebase" class="bg-blue-600 hover:bg-blue-700 text-white p-3 rounded-xl shadow-lg transition-all">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
-                    </svg>
-                </button>
-            </div>
-        </header>
-        
-        <!-- Campo de Pesquisa -->
-        <div class="bg-white/10 backdrop-blur-sm rounded-2xl p-4 border border-white/10">
-            <input type="text" id="search-firebase-id" placeholder="Pesquisar por ID do Trolley..." 
-                   class="w-full bg-white/90 text-slate-800 px-4 py-3 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 transition-all placeholder:text-slate-400 font-medium">
-        </div>
-        
-        <div id="firebase-list" class="space-y-6"></div>
-    </main>
 
-    <!-- Histórico de Registos -->
-    <main id="history-container" class="hidden flex-grow flex flex-col p-4 space-y-6 max-w-4xl mx-auto w-full">
-        <header class="flex flex-col gap-2 items-start">
-            <div class="flex items-center gap-3 justify-between w-full">
-                <div class="flex flex-col gap-2">
-                    <h2 class="text-2xl font-black text-white">Histórico de Registos</h2>
-                    <p class="text-blue-200/60 text-xs font-bold uppercase tracking-widest">IDs registados e respectivas datas</p>
-                </div>
-            </div>
-        </header>
-
-        <!-- Tabela de Histórico -->
-        <div class="bg-white rounded-3xl overflow-hidden shadow-xl border border-white/10">
-            <div class="overflow-x-auto">
-                <table class="w-full text-slate-800">
-                    <thead>
-                        <tr class="bg-slate-100 border-b border-slate-200">
-                            <th class="px-6 py-4 text-left text-xs font-black uppercase tracking-widest text-slate-600">ID Trolley</th>
-                            <th class="px-6 py-4 text-left text-xs font-black uppercase tracking-widest text-slate-600">Data de Registo</th>
-                            <th class="px-6 py-4 text-center text-xs font-black uppercase tracking-widest text-slate-600">Total Fotos</th>
-                        </tr>
-                    </thead>
-                    <tbody id="history-list">
-                        <tr>
-                            <td colspan="3" class="px-6 py-10 text-center text-slate-400 font-bold uppercase tracking-widest text-xs">
-                                Sem registos disponíveis
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    </main>
-
-    <!-- Visualização de Fotos de um Registo -->
-    <main id="history-detail-container" class="hidden flex-grow flex flex-col p-4 space-y-6 max-w-4xl mx-auto w-full">
-        <header class="flex items-center gap-4">
-            <button id="btn-back-to-history" class="w-12 h-12 bg-white/90 backdrop-blur-md text-slate-700 rounded-2xl shadow-xl flex items-center justify-center border border-white/10 hover:bg-white transition-all">
-                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M15 19l-7-7 7-7"></path></svg>
-            </button>
-            <div class="flex flex-col gap-2">
-                <h2 class="text-2xl font-black text-white">Fotos de Registo</h2>
-                <p id="detail-trolley-id" class="text-blue-200/60 text-xs font-bold uppercase tracking-widest">ID: ---</p>
-            </div>
-        </header>
-
-        <!-- Fotos Agrupadas por Passo -->
-        <div id="history-detail-list" class="space-y-6">
-            <!-- Preenchido dinamicamente -->
-        </div>
-    </main>
 
     <!-- Rodapé -->
     <footer id="footer-nav" class="hidden fixed bottom-6 left-6 right-6 z-40 flex gap-4">
@@ -407,12 +392,88 @@
         </div>
     </div>
 
+    <!-- Modal Trolleys (Histórico) -->
+    <div id="trolleys-modal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-[90] hidden flex items-end">
+        <div class="w-full bg-white rounded-t-[3rem] p-6 max-h-[80vh] flex flex-col shadow-2xl">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-2xl font-black text-slate-800">Histórico de Registos</h2>
+                <button id="btn-close-trolleys-modal" class="text-2xl text-slate-400 hover:text-slate-800">✕</button>
+            </div>
+            <div id="trolleys-list" class="flex-grow overflow-y-auto space-y-2"></div>
+        </div>
+    </div>
+
+    <!-- Modal Fotos do Trolley -->
+    <div id="trolley-photos-modal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-[90] hidden flex items-end">
+        <div class="w-full bg-white rounded-t-[3rem] p-6 max-h-[90vh] md:max-h-[80vh] flex flex-col shadow-2xl">
+            <div class="flex justify-between items-center mb-6">
+                <div>
+                    <h2 class="text-2xl font-black text-slate-800">Fotos de <span id="modal-trolley-title">---</span></h2>
+                    <p id="modal-trolley-date" class="text-xs text-slate-400 mt-1">---</p>
+                </div>
+                <button id="btn-close-photos-modal" class="text-2xl text-slate-400 hover:text-slate-800">✕</button>
+            </div>
+            <div id="trolley-photos-list" class="flex-grow md:overflow-y-auto grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4"></div>
+        </div>
+    </div>
+
+    <!-- Modal Visualização Ampliada de Foto -->
+    <div id="photo-viewer-modal" class="fixed inset-0 bg-black/90 backdrop-blur-sm z-[110] hidden flex flex-col items-center justify-center p-4">
+        <div class="max-w-2xl w-full flex flex-col gap-4">
+            <!-- Cabeçalho -->
+            <div class="flex justify-between items-center">
+                <div>
+                    <h2 id="viewer-photo-title" class="text-xl font-black text-white">---</h2>
+                    <p id="viewer-photo-info" class="text-xs text-slate-300 mt-1">---</p>
+                </div>
+                <button id="btn-close-viewer" class="text-3xl text-slate-300 hover:text-white transition">✕</button>
+            </div>
+            
+            <!-- Imagem -->
+            <div class="flex-grow flex items-center justify-center bg-black/50 rounded-2xl overflow-hidden border border-slate-600">
+                <img id="viewer-photo-image" src="" alt="Photo" class="max-w-full max-h-[60vh] object-contain">
+            </div>
+            
+            <!-- Botões de Ação -->
+            <div class="flex gap-3 justify-center">
+                <button id="viewer-btn-download" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-xl flex items-center gap-2 transition">
+                    <span>⬇️</span>
+                    <span>Download</span>
+                </button>
+                <button id="viewer-btn-open-drive" class="bg-slate-600 hover:bg-slate-700 text-white font-bold py-3 px-6 rounded-xl flex items-center gap-2 transition">
+                    <span>📂</span>
+                    <span>Ver no Drive</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
     <canvas id="canvas" class="hidden"></canvas>
+
+    <!-- Notificação de Foto Capturada -->
+    <div id="photo-toast-container" class="fixed bottom-40 left-1/2 transform -translate-x-1/2 z-50 pointer-events-none"></div>
+
+    <script>
+        // Funções globais para onclick handlers
+        window.openPhotoViewer = function(photo) {
+            // Delegará para a função do módulo
+            if (window.__openPhotoViewerImpl) {
+                window.__openPhotoViewerImpl(photo);
+            }
+        };
+
+        window.downloadPhotoFile = function(url, filename) {
+            // Delegará para a função do módulo
+            if (window.__downloadPhotoFileImpl) {
+                window.__downloadPhotoFileImpl(url, filename);
+            }
+        };
+    </script>
 
     <script type="module">
         import { initializeApp, getApp, getApps } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc, query, where } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc, query, where, updateDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyAzzIpUAm9rLpieMQ0z3H4hvY-amvaTkpM",
@@ -423,23 +484,21 @@
             appId: "1:436528007020:web:2b6ca0950f5de92427d549"
         };
 
-        const SHEETS_WEBHOOK_URL = "https://script.google.com/macros/s/AKfycbyjJykOVAHYFyQiiK8bDGbVBPiHhJAqCUMh8Jfb2ys8xUx_8rnckmo55BNa7yIOWtKG/exec";
-        const DRIVE_FOLDER_ID = "1EOZFc3TEyixdhjENyCR28Zg6igdMNuMm";
-
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'trolley-check-app';
         let db, auth, user = null;
         let currentStep = 1;
         let trolleyId = "";
         
         let sessionArchive = JSON.parse(localStorage.getItem('trolley_session_archive') || '{}');
-        const currentPhotos = { 1: [], 2: [], 3: [], 4: [] };
+        const currentPhotos = { 1: [], 2: [], 3: [], 4: [], 5: [] };
         let visitedTrolleys = JSON.parse(localStorage.getItem('trolley_visited') || '{}');
         
         const steps = {
-            1: { icon: "🛒", title: "Trolley Completo", desc: "Vista frontal de corpo inteiro.", min: 1 },
-            2: { icon: "🏷️", title: "Etiqueta ID", desc: "Leitura clara do código identificador.", min: 1 },
+            1: { icon: "🏷️", title: "Etiqueta ID", desc: "Leitura clara do código identificador.", min: 1 },
+            2: { icon: "🛒", title: "Trolley Completo", desc: "Vista frontal de corpo inteiro.", min: 1 },
             3: { icon: "🔄", title: "Giro 360º", desc: "Capturar as 4 quinas em sequência.", min: 4 },
-            4: { icon: "🔧", title: "Detalhes", desc: "Fotos de detalhes (Cestos, Portas, Dobradiças).", min: 1 }
+            4: { icon: "�️", title: "Laterais", desc: "Fotos posicionado de frente para laterais.", min: 4 },
+            5: { icon: "�🔧", title: "Detalhes", desc: "Fotos de detalhes (Cestos, Portas, Dobradiças).", min: 1 }
         };
 
         const initApp = async () => {
@@ -483,15 +542,6 @@
 
         function switchTab(tab) {
             const isRegisto = tab === 'registo';
-            const isFirebase = tab === 'firebase';
-            const isHistory = tab === 'history';
-            
-            document.getElementById('tab-registo').className = isRegisto ? 'py-4 px-6 text-xs font-black uppercase tracking-widest tab-active transition-all' : 'py-4 px-6 text-xs font-black uppercase tracking-widest text-slate-400 transition-all';
-            document.getElementById('tab-firebase').className = isFirebase ? 'py-4 px-6 text-xs font-black uppercase tracking-widest tab-active transition-all' : 'py-4 px-6 text-xs font-black uppercase tracking-widest text-slate-400 transition-all';
-            
-            document.getElementById('firebase-container').classList.toggle('hidden', !isFirebase);
-            document.getElementById('history-container').classList.toggle('hidden', !isHistory);
-            document.getElementById('history-detail-container').classList.add('hidden');
             
             if (isRegisto) {
                 if (trolleyId) {
@@ -504,32 +554,315 @@
                 document.getElementById('setup-screen').classList.add('hidden');
                 document.getElementById('app-container').classList.add('hidden');
                 document.getElementById('footer-nav').classList.add('hidden');
-                if (tab === 'firebase') {
-                    renderFirebaseGallery();
-                } else if (tab === 'history') {
-                    renderHistory();
-                }
             }
         }
 
-        document.getElementById('tab-registo').addEventListener('click', () => switchTab('registo'));
-        document.getElementById('tab-firebase').addEventListener('click', () => switchTab('firebase'));
-        document.getElementById('btn-calendar').addEventListener('click', () => switchTab('history'));
+        document.getElementById('tab-registo').addEventListener('click', () => {
+            // Se há um registo em curso, voltar ao início
+            if (trolleyId) {
+                trolleyId = "";
+                currentStep = 1;
+                currentPhotos[1] = [];
+                currentPhotos[2] = [];
+                currentPhotos[3] = [];
+                currentPhotos[4] = [];
+                currentPhotos[5] = [];
+                
+                document.getElementById('trolley-id-input').value = "";
+                
+                document.getElementById('app-container').classList.add('hidden');
+                document.getElementById('footer-nav').classList.add('hidden');
+                document.getElementById('setup-screen').classList.remove('hidden');
+                
+                console.log('↩️ Regressou ao ecrã inicial');
+            }
+        });
+
+        // Função para mostrar histórico de trolleys
+        async function showTrolleysHistory() {
+            try {
+                // Carregar trolleys do Firebase
+                const trolleysList = {};
+                
+                if (db) {
+                    let DocsRef = collection(db, 'photos');
+                    let snapshot = await getDocs(DocsRef);
+                    
+                    // Se vazio, tentar o caminho antigo
+                    if (snapshot.empty) {
+                        DocsRef = collection(db, 'artifacts', appId, 'public', 'data', 'photos');
+                        snapshot = await getDocs(DocsRef);
+                    }
+                    
+                    snapshot.docs.forEach(d => {
+                        const data = d.data();
+                        const tid = data.trolleyId || 'Desconhecido';
+                        if (!trolleysList[tid]) {
+                            trolleysList[tid] = { count: 0, lastDate: '' };
+                        }
+                        trolleysList[tid].count++;
+                        trolleysList[tid].lastDate = data.data_hora || new Date(data.timestamp).toLocaleString('pt-PT');
+                    });
+                }
+                
+                // Renderizar lista de trolleys
+                const trolleysListContainer = document.getElementById('trolleys-list');
+                const trolleyIds = Object.keys(trolleysList);
+                
+                if (trolleyIds.length === 0) {
+                    trolleysListContainer.innerHTML = '<div class="text-center py-10 text-slate-400">Nenhum registo encontrado</div>';
+                } else {
+                    trolleysListContainer.innerHTML = trolleyIds.map(tid => `
+                        <div class="p-4 bg-slate-50 rounded-xl border border-slate-200 hover:border-blue-400 transition-all cursor-pointer group trolley-item" data-trolley="${tid}">
+                            <div class="flex justify-between items-center">
+                                <div>
+                                    <p class="font-black text-slate-800 uppercase text-lg">${tid}</p>
+                                    <p class="text-xs text-slate-500">${trolleysList[tid].lastDate}</p>
+                                </div>
+                                <div class="bg-blue-100 text-blue-600 font-black px-3 py-2 rounded-lg">
+                                    ${trolleysList[tid].count}
+                                </div>
+                            </div>
+                        </div>
+                    `).join('');
+                    
+                    // Adicionar event listeners aos items
+                    document.querySelectorAll('.trolley-item').forEach(item => {
+                        item.addEventListener('click', () => {
+                            const tid = item.getAttribute('data-trolley');
+                            showTrolleyPhotos(tid);
+                        });
+                    });
+                }
+                
+                // Mostrar modal
+                document.getElementById('trolleys-modal').classList.remove('hidden');
+            } catch (error) {
+                console.error('Erro ao carregar trolleys:', error);
+                document.getElementById('trolleys-list').innerHTML = '<div class="text-center py-10 text-slate-400">Erro ao carregar registos</div>';
+                document.getElementById('trolleys-modal').classList.remove('hidden');
+            }
+        }
+
+        // Calendar/History Button Handler
+        document.getElementById('btn-calendar').addEventListener('click', showTrolleysHistory);
+
+        // Fechar modal de trolleys
+        document.getElementById('btn-close-trolleys-modal').addEventListener('click', () => {
+            document.getElementById('trolleys-modal').classList.add('hidden');
+        });
+
+        // Fechar modal de trolleys ao clicar fora
+        document.getElementById('trolleys-modal').addEventListener('click', (e) => {
+            if (e.target.id === 'trolleys-modal') {
+                document.getElementById('trolleys-modal').classList.add('hidden');
+            }
+        });
+
+        // Fechar modal de fotos
+        document.getElementById('btn-close-photos-modal').addEventListener('click', () => {
+            document.getElementById('trolley-photos-modal').classList.add('hidden');
+            document.getElementById('trolleys-modal').classList.remove('hidden');
+        });
+
+        // Fechar modal de fotos ao clicar fora
+        document.getElementById('trolley-photos-modal').addEventListener('click', (e) => {
+            if (e.target.id === 'trolley-photos-modal') {
+                document.getElementById('trolley-photos-modal').classList.add('hidden');
+                document.getElementById('trolleys-modal').classList.remove('hidden');
+            }
+        });
+
+        // ===== PHOTO VIEWER MODAL HANDLERS =====
+        const photoViewerModal = document.getElementById('photo-viewer-modal');
+        
+        document.getElementById('btn-close-viewer').addEventListener('click', () => {
+            photoViewerModal.classList.add('hidden');
+        });
+
+        photoViewerModal.addEventListener('click', (e) => {
+            if (e.target.id === 'photo-viewer-modal') {
+                photoViewerModal.classList.add('hidden');
+            }
+        });
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && !photoViewerModal.classList.contains('hidden')) {
+                photoViewerModal.classList.add('hidden');
+            }
+        });
+
+        // Função para abrir visualizador de foto
+        function openPhotoViewer(photo) {
+            const viewerTitle = document.getElementById('viewer-photo-title');
+            const viewerInfo = document.getElementById('viewer-photo-info');
+            const viewerImage = document.getElementById('viewer-photo-image');
+            const downloadBtn = document.getElementById('viewer-btn-download');
+            const driveBtn = document.getElementById('viewer-btn-open-drive');
+
+            viewerTitle.textContent = photo.stepTitle || `Passo ${photo.step}`;
+            viewerInfo.textContent = photo.timestamp || '---';
+            
+            // Mostrar preview se disponível
+            if (photo.previewUrl) {
+                viewerImage.src = photo.previewUrl;
+                viewerImage.style.display = 'block';
+            } else if (photo.hasImage) {
+                viewerImage.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"%3E%3Crect fill="%23333" width="100" height="100"/%3E%3Ctext x="50" y="50" text-anchor="middle" dy="0.3em" fill="%23888" font-size="40"%3E☁️%3C/text%3E%3C/svg%3E';
+                viewerImage.style.display = 'block';
+            }
+
+            // Botão de download
+            if (photo.downloadUrl) {
+                downloadBtn.style.display = 'flex';
+                downloadBtn.onclick = () => {
+                    // Criar link de download com nome correto
+                    const a = document.createElement('a');
+                    a.href = photo.downloadUrl;
+                    a.download = photo.filename || 'photo.jpg';
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                };
+            } else {
+                downloadBtn.style.display = 'none';
+            }
+
+            // Ocultar botão de Drive (não usamos mais)
+            driveBtn.style.display = 'none';
+
+            photoViewerModal.classList.remove('hidden');
+        }
+
+        // Expor funções no escopo global para handlers onclick
+        window.__openPhotoViewerImpl = openPhotoViewer;
+
+        // Mostrar fotos de um trolley específico
+        async function showTrolleyPhotos(trolleyId) {
+            try {
+                const photosList = [];
+                
+                console.log(`🔍 Procurando fotos para trolleyId: "${trolleyId}" (tipo: ${typeof trolleyId})`);
+                
+                if (db) {
+                    // Carregar fotos do Firebase (incluindo Base64)
+                    try {
+                        const urlsRef = collection(db, 'artifacts', appId, 'public', 'data', 'photo_urls');
+                        const urlsSnapshot = await getDocs(urlsRef);
+                        
+                        console.log(`📦 Total de documentos na coleção: ${urlsSnapshot.size}`);
+                        
+                        urlsSnapshot.docs.forEach((d, idx) => {
+                            const data = d.data();
+                            console.log(`  Doc ${idx + 1}: trolleyId="${data.trolleyId}" (tipo: ${typeof data.trolleyId}), step="${data.step}", filename="${data.filename}"`);
+                            
+                            if (String(data.trolleyId) === String(trolleyId)) {
+                                console.log(`    ✅ MATCH! Esta é uma foto de ${trolleyId}`);
+                                // Se tem Base64, converter para data URL
+                                let previewUrl = data.previewUrl || null;
+                                let downloadUrl = data.downloadUrl || null;
+                                
+                                if (data.imagemBase64 && !previewUrl) {
+                                    previewUrl = `data:image/jpeg;base64,${data.imagemBase64}`;
+                                    downloadUrl = `data:image/jpeg;base64,${data.imagemBase64}`;
+                                    console.log(`🖼️ Convertido Base64 para Data URL para ${data.filename}`);
+                                }
+                                
+                                photosList.push({
+                                    step: data.step,
+                                    stepTitle: steps[data.step]?.title || `Passo ${data.step}`,
+                                    timestamp: data.dataHora || new Date(data.timestamp).toLocaleString('pt-PT'),
+                                    hasImage: true,
+                                    previewUrl: previewUrl,
+                                    downloadUrl: downloadUrl,
+                                    filename: data.filename || `Trolley_${trolleyId}_P${data.step}_${Date.now()}.jpg`
+                                });
+                            } else {
+                                console.log(`    ❌ Não é de ${trolleyId}`);
+                            }
+                        });
+                        console.log(`📸 ${photosList.length} foto(s) carregada(s) para ${trolleyId}`);
+                    } catch (e) {
+                        console.warn('⚠️ Erro a carregar fotos do Firebase:', e.message);
+                        console.error(e);
+                    }
+                    
+                    // Ordenar por step
+                    photosList.sort((a, b) => a.step - b.step);
+                }
+                
+                // Renderizar fotos
+                const photosContainer = document.getElementById('trolley-photos-list');
+                document.getElementById('modal-trolley-title').innerText = trolleyId;
+                
+                if (photosList.length === 0) {
+                    photosContainer.innerHTML = '<div class="col-span-2 text-center py-10 text-slate-400">Nenhuma foto encontrada</div>';
+                } else {
+                    let htmlContent = '';
+                    
+                    // Renderizar fotos
+                    htmlContent += photosList.map((photo, idx) => `
+                        <div class="bg-slate-50 rounded-xl border border-slate-200 overflow-hidden flex flex-col shadow-sm hover:shadow-md transition-all group cursor-pointer h-full sm:h-auto" onclick="event.stopPropagation()">
+                            <!-- Header -->
+                            <div class="bg-gradient-to-r from-blue-400 to-blue-600 p-3 text-white">
+                                <p class="text-xs font-bold uppercase tracking-wider">${photo.stepTitle}</p>
+                                <p class="text-[10px] text-blue-100">${photo.timestamp}</p>
+                            </div>
+                            
+                            <!-- Imagem -->
+                            <div class="flex-grow min-h-48 md:min-h-28 lg:min-h-20 flex items-center justify-center bg-slate-100 overflow-hidden relative">
+                                ${photo.previewUrl ? `
+                                    <img src="${photo.previewUrl}" alt="Preview" 
+                                         class="max-w-[80%] max-h-[80%] object-contain hover:scale-110 transition-transform" 
+                                         onclick="openPhotoViewer(${JSON.stringify(photo).replace(/"/g, '&quot;')})">
+                                ` : `
+                                    <div class="w-full h-full flex items-center justify-center bg-slate-200">
+                                        <span class="text-4xl">📸</span>
+                                    </div>
+                                `}
+                            </div>
+                            
+                            <!-- Botões -->
+                            <div class="flex gap-2 p-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                ${photo.downloadUrl ? `
+                                    <button onclick="event.stopPropagation(); downloadPhotoFile('${photo.downloadUrl}', '${photo.filename}')" class="flex-1 bg-blue-600 text-white px-2 py-2 text-[10px] font-bold uppercase hover:bg-blue-700 transition-all flex items-center justify-center gap-1 rounded">
+                                        <span>⬇️</span>
+                                        <span>Download</span>
+                                    </button>
+                                ` : `
+                                    <div class="flex-1 bg-slate-400 text-white px-2 py-2 text-[10px] font-bold uppercase rounded text-center">
+                                        A processar...
+                                    </div>
+                                `}
+                            </div>
+                        </div>
+                    `).join('');
+                    
+                    photosContainer.innerHTML = htmlContent;
+                }
+                
+                // Mostrar modal de fotos
+                document.getElementById('trolleys-modal').classList.add('hidden');
+                document.getElementById('trolley-photos-modal').classList.remove('hidden');
+            } catch (error) {
+                console.error('Erro ao carregar fotos:', error);
+                document.getElementById('trolley-photos-list').innerHTML = '<div class="col-span-2 text-center py-10 text-slate-400">Erro ao carregar fotos</div>';
+                document.getElementById('trolleys-modal').classList.add('hidden');
+                document.getElementById('trolley-photos-modal').classList.remove('hidden');
+            }
+        }
+
+        // History button no ecrã inicial
+        document.getElementById('btn-view-history').addEventListener('click', showTrolleysHistory);
 
         document.getElementById('btn-start-registo').addEventListener('click', async () => {
             trolleyId = document.getElementById('trolley-id-input').value.trim().toUpperCase();
             if (trolleyId.length < 2) return;
             
-            // Verificar se o ID já existe no localStorage (sessão local)
-            if (sessionArchive[trolleyId]) {
-                alert(`⚠️ O ID "${trolleyId}" já foi registado! Utilize um ID diferente.`);
-                return;
-            }
-
-            // Verificar se o ID já existe no Firebase
+            // Verificar se o ID já existe no Firebase (sincroniza entre dispositivos)
             const existsInFirebase = await checkTrolleyIdExists(trolleyId);
             if (existsInFirebase) {
-                alert(`⚠️ O ID "${trolleyId}" já existe na Base de Dados! Utilize um ID diferente.`);
+                alert(`⚠️ O ID "${trolleyId}" já existe! Utilize um ID diferente.`);
                 return;
             }
             
@@ -554,44 +887,133 @@
             document.getElementById('setup-screen').classList.add('hidden');
             document.getElementById('app-container').classList.remove('hidden');
             document.getElementById('footer-nav').classList.remove('hidden');
+            document.querySelector('.tabs-nav').classList.remove('hidden');
             renderStep();
         });
 
         async function savePhoto(dataUrl) {
             const photoIndex = currentPhotos[currentStep].length + 1;
             const dataHora = new Date().toLocaleString('pt-PT');
+            const filename = `Trolley_${trolleyId}_P${currentStep}_${Date.now()}.jpg`;
             
-            const photoData = { 
+            // Metadados
+            const photoMetadata = { 
                 step: currentStep, 
                 stepTitle: steps[currentStep].title, 
-                url: dataUrl, 
                 timestamp: dataHora, 
                 index: photoIndex,
-                filename: `Trolley_${trolleyId}_P${currentStep}_${Date.now()}.jpg`
+                filename: filename
             };
 
             if (!sessionArchive[trolleyId]) sessionArchive[trolleyId] = [];
-            sessionArchive[trolleyId].push(photoData);
-            currentPhotos[currentStep].push(dataUrl);
-            localStorage.setItem('trolley_session_archive', JSON.stringify(sessionArchive));
+            sessionArchive[trolleyId].push(photoMetadata);
             
+            // Guardar a imagem em memória para renderização
+            currentPhotos[currentStep].push(dataUrl);
+            
+            // Guardar metadados no localStorage
+            try {
+                localStorage.setItem('trolley_session_archive', JSON.stringify(sessionArchive));
+            } catch (e) {
+                if (e.name === 'QuotaExceededError') {
+                    console.warn('⚠️ localStorage quase cheio');
+                }
+            }
+            
+            showPhotoNotification(currentStep);
             updateUI();
+            
             const syncIcon = document.getElementById('sync-status');
             syncIcon.classList.remove('hidden');
             
-            if (user) {
-                addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'photos'), {
-                    trolleyId, step: currentStep, imagem: dataUrl, data_hora: dataHora, timestamp: Date.now()
-                }).catch(e => console.error(e));
+            if (user && db) {
+                try {
+                    console.log(`📤 Guardando imagem em Base64... (${filename})`);
+                    
+                    // Guardar Base64 diretamente em Firestore
+                    const base64Data = dataUrl.split(',')[1];
+                    
+                    await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'photo_urls'), {
+                        trolleyId: String(trolleyId),
+                        step: String(currentStep),
+                        filename: filename,
+                        imageBase64: base64Data,
+                        previewUrl: dataUrl,  // DataURL para preview
+                        downloadUrl: dataUrl,
+                        timestamp: Date.now(),
+                        dataHora: dataHora
+                    });
+                    
+                    console.log(`✅ Imagem guardada em Firestore para ${trolleyId} Passo ${currentStep}`);
+                    
+                    // Guardar metadata
+                    await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'photos'), {
+                        trolleyId: String(trolleyId),
+                        step: currentStep,
+                        data_hora: dataHora,
+                        timestamp: Date.now(),
+                        hasImage: true
+                    });
+                    
+                    console.log(`✅ Metadados guardados`);
+                    
+                } catch (error) {
+                    console.error(`❌ Erro ao guardar: ${error.message}`);
+                } finally {
+                    setTimeout(() => syncIcon.classList.add('hidden'), 1500);
+                }
             }
+        }
 
-            if (SHEETS_WEBHOOK_URL) {
-                fetch(SHEETS_WEBHOOK_URL, {
-                    method: 'POST',
-                    mode: 'no-cors',
-                    body: JSON.stringify({ trolleyId, passo: currentStep, imagemBase64: dataUrl.split(',')[1], folderId: DRIVE_FOLDER_ID })
-                }).then(() => setTimeout(() => syncIcon.classList.add('hidden'), 1500));
+        // Função para mostrar notificação de foto capturada
+        function showPhotoNotification(step) {
+            const minPhotos = steps[step].min;
+            const currentPhotosCount = currentPhotos[step].length;
+            const isComplete = currentPhotosCount >= minPhotos;
+            
+            const container = document.getElementById('photo-toast-container');
+            const toast = document.createElement('div');
+            toast.className = 'photo-toast flex items-center gap-3 bg-white shadow-2xl rounded-2xl px-6 py-4 text-slate-800 border-2 border-emerald-400 pointer-events-auto';
+            
+            const checkIcon = document.createElement('div');
+            checkIcon.className = 'icon-check flex-shrink-0 flex items-center justify-center w-8 h-8 bg-emerald-100 rounded-full';
+            
+            if (isComplete) {
+                checkIcon.innerHTML = '✓';
+                checkIcon.className += ' text-emerald-600';
+            } else {
+                checkIcon.innerHTML = `${currentPhotosCount}/${minPhotos}`;
+                checkIcon.className = 'icon-check flex-shrink-0 flex items-center justify-center w-8 h-8 bg-blue-100 text-blue-600 rounded-full text-sm font-black';
             }
+            
+            const textDiv = document.createElement('div');
+            textDiv.className = 'flex flex-col gap-0.5';
+            
+            const title = document.createElement('p');
+            title.className = 'font-black text-sm leading-snug';
+            title.textContent = '📸 Foto Capturada!';
+            
+            const count = document.createElement('p');
+            count.className = 'text-xs text-slate-500 font-bold';
+            
+            if (isComplete) {
+                count.textContent = `${steps[step].title} completo! ✓ (${currentPhotosCount}/${minPhotos})`;
+            } else {
+                count.textContent = `${currentPhotosCount} de ${minPhotos} - ${steps[step].title}`;
+            }
+            
+            textDiv.appendChild(title);
+            textDiv.appendChild(count);
+            
+            toast.appendChild(checkIcon);
+            toast.appendChild(textDiv);
+            container.appendChild(toast);
+            
+            // Remover a notificação após 3 segundos
+            setTimeout(() => {
+                toast.classList.add('hide');
+                setTimeout(() => toast.remove(), 400);
+            }, 3000);
         }
 
 
@@ -617,11 +1039,11 @@
         function renderStep() {
             const s = steps[currentStep];
             document.getElementById('step-icon').innerText = s.icon;
-            document.getElementById('step-number').innerText = `Passo ${currentStep} de 4`;
+            document.getElementById('step-number').innerText = `Passo ${currentStep} de 5`;
             document.getElementById('step-title').innerText = s.title;
             document.getElementById('step-desc').innerText = s.desc;
             document.getElementById('btn-prev-step').disabled = currentStep === 1;
-            document.getElementById('btn-next-text').innerText = currentStep === 4 ? "Finalizar" : "Próximo";
+            document.getElementById('btn-next-text').innerText = currentStep === 5 ? "Finalizar" : "Próximo";
             
             const guideImg = document.getElementById('guide-img');
             const guideImgExtra = document.getElementById('guide-img-extra');
@@ -636,12 +1058,12 @@
             // Lógica de Media por Passo
             if (currentStep === 1) {
                 guideImg.classList.remove('hidden');
-                guideImg.src = "https://static.wixstatic.com/media/a6967f_19500c4b619c410ea3e4bd802bcd65b3~mv2.png";
-            } else if (currentStep === 2) {
-                guideImg.classList.remove('hidden');
                 wrapper2.classList.remove('hidden');
                 guideImg.src = "https://static.wixstatic.com/media/a6967f_6000dd3b78ad4de6be13da0c9e747eed~mv2.png";
                 guideImgExtra.src = "https://static.wixstatic.com/media/a6967f_2cf28174498e4c568dea3f97e85e65ac~mv2.png";
+            } else if (currentStep === 2) {
+                guideImg.classList.remove('hidden');
+                guideImg.src = "https://static.wixstatic.com/media/a6967f_19500c4b619c410ea3e4bd802bcd65b3~mv2.png";
             } else if (currentStep === 3) {
                 guideVideo.classList.remove('hidden');
                 guideVideo.src = "https://video.wixstatic.com/video/a6967f_515ee3348cdb49e1816eec2fa30fdd00/720p/mp4/file.mp4";
@@ -752,7 +1174,28 @@
 
                 // Buscar dados do Firebase
                 const firebasePhotos = {};
+                const photoUrls = {}; // Armazenar URLs por trolleyId e step
+                
                 try {
+                    // Primeiro, carregar todas as URLs de fotos
+                    try {
+                        const urlsRef = collection(db, 'artifacts', appId, 'public', 'data', 'photo_urls');
+                        const urlsSnapshot = await getDocs(urlsRef);
+                        urlsSnapshot.docs.forEach(d => {
+                            const data = d.data();
+                            const key = `${data.trolleyId}_${data.step}`;
+                            photoUrls[key] = {
+                                previewUrl: data.previewUrl || null,
+                                downloadUrl: data.downloadUrl || null,
+                                fileId: data.fileId || null
+                            };
+                        });
+                        console.log('📸 URLs de fotos carregadas:', Object.keys(photoUrls).length);
+                    } catch (e) {
+                        console.warn('⚠️ Erro a carregar URLs:', e.message);
+                    }
+                    
+                    // Então, carregar os metadados das fotos
                     let DocsRef = collection(db, 'photos');
                     let snapshot = await getDocs(DocsRef);
                     
@@ -772,12 +1215,23 @@
                             };
                         }
                         
+                        // Procurar URLs correspondentes
+                        const urlKey = `${tid}_${data.step}`;
+                        const urlData = photoUrls[urlKey] || {};
+                        
+                        // Usar URLs do Firebase Storage (já completas)
+                        const previewUrl = urlData.previewUrl || null;
+                        const downloadUrl = urlData.downloadUrl || null;
+                        
                         firebasePhotos[tid].photos.push({
                             step: data.step,
                             stepTitle: steps[data.step]?.title || `Passo ${data.step}`,
-                            url: data.imagem,
+                            previewUrl: previewUrl,
+                            downloadUrl: downloadUrl,
+                            url: previewUrl,  // Para compatibilidade
                             timestamp: data.data_hora || new Date(data.timestamp).toLocaleString('pt-PT'),
-                            filename: `Trolley_${tid}_P${data.step}_${data.timestamp || Date.now()}.jpg`
+                            filename: `Trolley_${tid}_P${data.step}_${data.timestamp || Date.now()}.jpg`,
+                            hasImage: data.hasImage === true
                         });
 
                         if (data.data_hora || data.timestamp) {
@@ -795,8 +1249,6 @@
                     const firebaseOnlyIds = Object.keys(firebasePhotos).filter(id => !existingTrolleyIds.has(id));
                     
                     if (firebaseOnlyIds.length > 0) {
-                        const tbody = listContainer.parentElement;
-                        
                         firebaseOnlyIds.forEach(trolleyId => {
                             const photos = firebasePhotos[trolleyId];
                             const dataRegisto = photos.dates.length > 0 ? photos.dates[0] : '---';
@@ -824,7 +1276,7 @@
                                 showHistoryDetailFromFirebase(trolleyId, firebasePhotos[trolleyId].photos);
                             });
 
-                            tbody.appendChild(tr);
+                            listContainer.appendChild(tr);
                         });
                     }
 
@@ -843,41 +1295,35 @@
             }
         }
 
-        function showHistoryDetail(trolleyId) {
+        function showHistoryDetail(selectedTrolleyId) {
             // Marcar como visitado
-            visitedTrolleys[trolleyId] = true;
+            visitedTrolleys[selectedTrolleyId] = true;
             localStorage.setItem('trolley_visited', JSON.stringify(visitedTrolleys));
             
             // Remover a classe de unvisited da linha
-            const row = document.querySelector(`[data-trolley="${trolleyId}"]`);
+            const row = document.querySelector(`[data-trolley="${selectedTrolleyId}"]`);
             if (row) {
                 row.classList.remove('history-row-unvisited');
             }
             
-            const photos = sessionArchive[trolleyId];
-            if (!photos) return;
-
-            showHistoryDetailFromFirebase(trolleyId, Array.isArray(photos) ? photos : []);
+            // Se temos fotos em memória e é o trolley atual, mostrar currentPhotos
+            const hasCurrentPhotos = Object.values(currentPhotos).some(arr => arr.length > 0);
+            if (hasCurrentPhotos) {
+                showHistoryDetailFromCurrentSession(selectedTrolleyId);
+            } else {
+                const photos = sessionArchive[selectedTrolleyId];
+                if (!photos) return;
+                showHistoryDetailFromFirebase(selectedTrolleyId, Array.isArray(photos) ? photos : []);
+            }
         }
 
-        function showHistoryDetailFromFirebase(trolleyId, photos) {
-            // Agrupar fotos por passo
-            const photosByStep = {};
-            photos.forEach(photo => {
-                if (photo.step) {
-                    if (!photosByStep[photo.step]) {
-                        photosByStep[photo.step] = [];
-                    }
-                    photosByStep[photo.step].push(photo);
-                }
-            });
-
-            // Renderizar a vista de detalhe
+        function showHistoryDetailFromCurrentSession(trolleyId) {
+            // Renderizar fotos da sessão atual com imagens em memória
             const detailContainer = document.getElementById('history-detail-list');
-            const stepsOrder = [1, 2, 3, 4];
+            const stepsOrder = [1, 2, 3, 4, 5];
             
             detailContainer.innerHTML = stepsOrder.map(step => {
-                const photosForStep = photosByStep[step] || [];
+                const photosForStep = currentPhotos[step] || [];
                 if (photosForStep.length === 0) return '';
 
                 const stepInfo = steps[step] || { icon: '📷', title: `Passo ${step}` };
@@ -891,12 +1337,12 @@
                             </div>
                         </div>
                         <div class="p-4 grid grid-cols-2 md:grid-cols-3 gap-3">
-                            ${photosForStep.map((photo, index) => `
+                            ${photosForStep.map((photoUrl, index) => `
                                 <div class="relative group">
-                                    <img src="${photo.url}" class="w-full h-40 object-cover rounded-xl shadow-sm border border-slate-100">
+                                    <img src="${photoUrl}" class="w-full h-40 object-cover rounded-xl shadow-sm border border-slate-100">
                                     <div class="absolute inset-0 flex flex-col items-center justify-center bg-slate-900/80 opacity-0 group-hover:opacity-100 transition-opacity rounded-xl p-2 text-center">
-                                        <p class="text-[10px] text-white font-bold mb-1">${photo.timestamp}</p>
-                                        <a href="${photo.url}" download="${photo.filename || 'foto.jpg'}" 
+                                        <p class="text-[10px] text-white font-bold mb-1">Foto ${index + 1}</p>
+                                        <a href="${photoUrl}" download="foto_${Date.now()}.jpg" 
                                            class="text-white hover:text-blue-400 transition-colors">
                                             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
@@ -918,11 +1364,91 @@
             document.getElementById('history-detail-container').classList.remove('hidden');
         }
 
-        // Event listener para voltar ao histórico
-        document.getElementById('btn-back-to-history').addEventListener('click', () => {
-            document.getElementById('history-detail-container').classList.add('hidden');
-            document.getElementById('history-container').classList.remove('hidden');
-        });
+        function downloadPhotoFile(url, filename) {
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+        }
+
+        // Expor funções no escopo global para handlers onclick
+        window.__downloadPhotoFileImpl = downloadPhotoFile;
+
+        function showHistoryDetailFromFirebase(trolleyId, photos) {
+            // Agrupar fotos por passo
+            const photosByStep = {};
+            photos.forEach(photo => {
+                if (photo.step) {
+                    if (!photosByStep[photo.step]) {
+                        photosByStep[photo.step] = [];
+                    }
+                    photosByStep[photo.step].push(photo);
+                }
+            });
+
+            // Renderizar a vista de detalhe
+            const detailContainer = document.getElementById('history-detail-list');
+            const stepsOrder = [1, 2, 3, 4, 5];
+            
+            detailContainer.innerHTML = stepsOrder.map(step => {
+                const photosForStep = photosByStep[step] || [];
+                if (photosForStep.length === 0) return '';
+
+                const stepInfo = steps[step] || { icon: '📷', title: `Passo ${step}` };
+                return `
+                    <div class="bg-white rounded-3xl overflow-hidden shadow-xl border border-white/10">
+                        <div class="bg-gradient-to-r from-slate-50 to-slate-100 px-6 py-4 border-b border-slate-200 flex items-center gap-3">
+                            <span class="text-2xl">${stepInfo.icon}</span>
+                            <div>
+                                <h3 class="font-black text-slate-800 uppercase">${stepInfo.title}</h3>
+                                <p class="text-xs text-slate-500 font-bold">${photosForStep.length} foto${photosForStep.length !== 1 ? 's' : ''}</p>
+                            </div>
+                        </div>
+                        <div class="p-4 grid grid-cols-2 md:grid-cols-3 gap-3">
+                            ${photosForStep.map((photo, index) => {
+                                const imageUrl = photo.url || photo.previewUrl || '';
+                                const hasImage = imageUrl && imageUrl.length > 0;
+                                const downloadUrl = photo.downloadUrl || null;
+                                
+                                return `
+                                <div class="relative group cursor-pointer">
+                                    ${hasImage ? `
+                                        <img src="${imageUrl}" 
+                                             class="w-full h-40 object-cover rounded-xl shadow-sm border border-slate-100 hover:shadow-md transition"
+                                             alt="Foto ${photo.stepTitle} #${index + 1}">
+                                    ` : ''}
+                                    <div class="${hasImage ? 'hidden' : 'flex'} w-full h-40 items-center justify-center bg-slate-100 rounded-xl border border-slate-200 text-slate-400 flex-col gap-2 hover:shadow-sm transition">
+                                        <span class="text-2xl">📸</span>
+                                        <span class="text-xs text-center px-1 font-medium">Sem imagem</span>
+                                    </div>
+                                    <div class="absolute inset-0 flex flex-col items-center justify-center bg-slate-900/80 opacity-0 group-hover:opacity-100 transition-opacity rounded-xl p-2 text-center">
+                                        <p class="text-[10px] text-white font-bold mb-2">${photo.timestamp}</p>
+                                        <div class="flex gap-2 w-full">
+                                            ${downloadUrl ? `
+                                                <button onclick="event.stopPropagation(); downloadPhotoFile('${downloadUrl}', '${photo.filename || 'photo.jpg'}')" class="flex-1 text-white hover:text-blue-400 transition-colors">
+                                                    <svg class="w-5 h-5 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+                                                    </svg>
+                                                </button>
+                                            ` : ''}
+                                        </div>
+                                    </div>
+                                </div>
+                            `}).join('')}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            // Atualizar ID do trolley no cabeçalho
+            document.getElementById('detail-trolley-id').textContent = `ID: ${trolleyId}`;
+
+            // Mudar para a vista de detalhe
+            document.getElementById('history-container').classList.add('hidden');
+            document.getElementById('history-detail-container').classList.remove('hidden');
+        }
 
         async function renderFirebaseGallery() {
             const container = document.getElementById('firebase-list');
@@ -978,7 +1504,8 @@
                             firebasePhotos[tid].push({
                                 step: data.step,
                                 stepTitle: steps[data.step]?.title || `Passo ${data.step}`,
-                                url: data.imagem,
+                                url: data.imagem || null,  // Imagens antigas em Base64
+                                inGoogleDrive: data.hasImage === true,  // Novas imagens no Drive
                                 timestamp: data.data_hora || new Date(data.timestamp).toLocaleString('pt-PT'),
                                 filename: `Trolley_${tid}_P${data.step}_${data.timestamp || Date.now()}.jpg`
                             });
@@ -1007,9 +1534,20 @@
                             <span class="text-[10px] text-slate-400">${firebasePhotos[id].length} Fotos</span>
                         </div>
                         <div class="p-4 grid grid-cols-3 gap-3">
-                            ${firebasePhotos[id].map((p, i) => `
+                            ${firebasePhotos[id].map((p, i) => {
+                                const hasUrl = p.url && p.url.length > 0;
+                                const inDrive = p.inGoogleDrive === true;
+                                return `
                                 <div class="relative group">
-                                    <img src="${p.url}" class="w-full h-24 object-cover rounded-xl shadow-sm border border-slate-100">
+                                    ${hasUrl ? `
+                                        <img src="${p.url}" 
+                                             class="w-full h-24 object-cover rounded-xl shadow-sm border border-slate-100"
+                                             onerror="this.style.display='none'; this.nextElementSibling.style.display='flex'">
+                                    ` : ''}
+                                    <div class="${hasUrl ? 'hidden' : 'flex'} w-full h-24 items-center justify-center ${inDrive ? 'bg-blue-50' : 'bg-slate-100'} rounded-xl border ${inDrive ? 'border-blue-200' : 'border-slate-200'} flex-col gap-1">
+                                        <span class="text-xl">${inDrive ? '☁️' : '📸'}</span>
+                                        <span class="text-[9px] font-medium text-${inDrive ? 'blue' : 'slate'}-400">${inDrive ? 'Drive' : 'Sem img'}</span>
+                                    </div>
                                     <button class="btn-delete-photo absolute -top-2 -right-2 bg-red-500 hover:bg-red-600 text-white w-7 h-7 rounded-full text-xs shadow-md opacity-0 group-hover:opacity-100 transition-opacity" 
                                             data-docid="${docIds[id][i]}" 
                                             data-trolleyid="${id}"
@@ -1019,15 +1557,19 @@
                                     <div class="absolute inset-0 flex flex-col items-center justify-center bg-slate-900/80 opacity-0 group-hover:opacity-100 transition-opacity rounded-xl p-1 text-center">
                                         <p class="text-[10px] text-white font-bold mb-1">${p.stepTitle}</p>
                                         <p class="text-[9px] text-white/70 mb-2">${p.timestamp}</p>
-                                        <a href="${p.url}" download="${p.filename || 'foto_trolley.jpg'}" 
-                                           class="text-white hover:text-blue-400 transition-colors">
-                                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
-                                            </svg>
-                                        </a>
+                                        ${hasUrl ? `
+                                            <a href="${p.url}" download="${p.filename || 'foto_trolley.jpg'}" 
+                                               class="text-white hover:text-blue-400 transition-colors">
+                                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+                                                </svg>
+                                            </a>
+                                        ` : `
+                                            <span class="text-[9px] text-white/50">${inDrive ? 'No Google Drive' : 'N/A'}</span>
+                                        `}
                                     </div>
                                 </div>
-                            `).join('')}
+                            `}).join('')}
                         </div>
                     </div>
                 `).join('');
@@ -1052,25 +1594,6 @@
                 }
             }
         }
-
-        document.getElementById('btn-refresh-firebase').addEventListener('click', () => {
-            renderFirebaseGallery();
-        });
-
-        // Event listener para pesquisa de ID
-        document.getElementById('search-firebase-id').addEventListener('input', (e) => {
-            const searchTerm = e.target.value.toLowerCase().trim();
-            const items = document.querySelectorAll('#firebase-list > div');
-            
-            items.forEach(item => {
-                const idText = item.querySelector('.border-b')?.textContent || '';
-                if (searchTerm === '' || idText.toLowerCase().includes(searchTerm)) {
-                    item.style.display = 'block';
-                } else {
-                    item.style.display = 'none';
-                }
-            });
-        });
 
         // Event listener para apagar fotos individualmente
         document.addEventListener('click', async (e) => {
@@ -1105,7 +1628,7 @@
         });
 
         document.getElementById('btn-next-step').addEventListener('click', () => {
-            if (currentStep < 4) { currentStep++; renderStep(); }
+            if (currentStep < 5) { currentStep++; renderStep(); }
             else { 
                 trolleyId = "";
                 currentStep = 1;
