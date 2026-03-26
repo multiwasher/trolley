@@ -83,7 +83,7 @@
   </div>
 
   <script>
-    const BASE_URL = window.location.origin;
+    const BASE_URL = window.location.pathname.includes('/trolley') ? window.location.origin + '/trolley' : window.location.origin;
     
     async function runTests() {
       const testsContainer = document.getElementById('tests');
