@@ -413,7 +413,7 @@
                 </div>
                 <button id="btn-close-photos-modal" class="text-2xl text-slate-400 hover:text-slate-800">✕</button>
             </div>
-            <div id="trolley-photos-list" class="flex-grow overflow-y-auto grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4"></div>
+            <div id="trolley-photos-list" class="flex-grow flex md:grid overflow-x-auto md:overflow-y-auto md:grid-cols-4 gap-4 snap-x snap-mandatory md:snap-none"></div>
         </div>
     </div>
 
@@ -792,13 +792,13 @@
                 document.getElementById('modal-trolley-title').innerText = trolleyId;
                 
                 if (photosList.length === 0) {
-                    photosContainer.innerHTML = '<div class="col-span-2 text-center py-10 text-slate-400">Nenhuma foto encontrada</div>';
+                    photosContainer.innerHTML = '<div class="w-full text-center py-10 text-slate-400">Nenhuma foto encontrada</div>';
                 } else {
                     let htmlContent = '';
                     
                     // Renderizar fotos
                     htmlContent += photosList.map((photo, idx) => `
-                        <div class="bg-slate-50 rounded-xl border border-slate-200 overflow-hidden flex flex-col shadow-sm hover:shadow-md transition-all group cursor-pointer h-full sm:h-auto" onclick="event.stopPropagation()">
+                        <div class="flex-shrink-0 w-[calc(100vw-80px)] md:w-auto md:flex-grow bg-slate-50 rounded-xl border border-slate-200 overflow-hidden flex flex-col shadow-sm hover:shadow-md transition-all group cursor-pointer h-full sm:h-auto snap-center" onclick="event.stopPropagation()">
                             <!-- Header -->
                             <div class="bg-gradient-to-r from-blue-400 to-blue-600 p-3 text-white">
                                 <p class="text-xs font-bold uppercase tracking-wider">${photo.stepTitle}</p>
@@ -842,7 +842,7 @@
                 document.getElementById('trolley-photos-modal').classList.remove('hidden');
             } catch (error) {
                 console.error('Erro ao carregar fotos:', error);
-                document.getElementById('trolley-photos-list').innerHTML = '<div class="col-span-2 text-center py-10 text-slate-400">Erro ao carregar fotos</div>';
+                document.getElementById('trolley-photos-list').innerHTML = '<div class="w-full text-center py-10 text-slate-400">Erro ao carregar fotos</div>';
                 document.getElementById('trolleys-modal').classList.add('hidden');
                 document.getElementById('trolley-photos-modal').classList.remove('hidden');
             }
