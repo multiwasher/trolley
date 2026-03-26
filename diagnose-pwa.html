@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="pt-PT">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Diagnóstico PWA</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      padding: 20px;
+      background: #f5f5f5;
+      color: #333;
+    }
+    .container {
+      max-width: 600px;
+      margin: 0 auto;
+      background: white;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    h1 {
+      color: #2563eb;
+      margin-top: 0;
+    }
+    .test {
+      margin: 15px 0;
+      padding: 15px;
+      border: 2px solid #ddd;
+      border-radius: 4px;
+      background: #fafafa;
+    }
+    .test.success {
+      border-color: #10b981;
+      background: #ecfdf5;
+    }
+    .test.error {
+      border-color: #ef4444;
+      background: #fef2f2;
+    }
+    .test.pending {
+      border-color: #f59e0b;
+      background: #fffbeb;
+    }
+    .test-title {
+      font-weight: bold;
+      margin-bottom: 5px;
+    }
+    .test-result {
+      font-size: 14px;
+      color: #666;
+      margin-top: 5px;
+      word-break: break-all;
+    }
+    .icon {
+      display: inline-block;
+      margin-right: 5px;
+    }
+    .loading {
+      display: inline-block;
+      animation: spin 1s linear infinite;
+    }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🔧 Diagnóstico PWA</h1>
+    
+    <div id="tests"></div>
+    
+    <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #ddd;">
+      <h3>💡 Próximos passos:</h3>
+      <ol>
+        <li>Se todos os testes estão ✅, tenta reinstalar a PWA (remove e instala de novo)</li>
+        <li>Se há ❌, abre a consola (F12) e procura por erros</li>
+        <li>Limpa a cache do navegador e tenta novamente</li>
+        <li>Se o manifesto retorna 404, contacta o administrador do servidor</li>
+      </ol>
+    </div>
+  </div>
+
+  <script>
+    const BASE_URL = window.location.origin;
+    
+    async function runTests() {
+      const testsContainer = document.getElementById('tests');
+      
+      // Test 1: Manifest accessibility
+      addTest('Verificando acessibilidade do manifest.json...', 'pending', testsContainer);
+      
+      try {
+        const manifestResponse = await fetch(`${BASE_URL}/manifest.json`);
+        if (manifestResponse.ok) {
+          updateLastTest('✅ Manifest acessível', 'success', `Status: ${manifestResponse.status}`);
+          
+          const contentType = manifestResponse.headers.get('content-type');
+          addTest(`Content-Type correto`, 'success', testsContainer, `${contentType}`);
+          
+          const manifest = await manifestResponse.json();
+          addTest('Manifest JSON válido', 'success', testsContainer, `Nome: ${manifest.name}`);
+          
+          // Check for required fields
+          const requiredFields = ['name', 'short_name', 'start_url', 'display', 'icons'];
+          let allPresent = true;
+          for (const field of requiredFields) {
+            if (!manifest[field]) {
+              allPresent = false;
+              addTest(`Falta campo obrigatório: ${field}`, 'error', testsContainer);
+            }
+          }
+          if (allPresent) {
+            addTest('Todos os campos obrigatórios presentes', 'success', testsContainer);
+          }
+        } else {
+          updateLastTest('❌ Manifest não encontrado', 'error', `Status: ${manifestResponse.status}`);
+          addTest('Solução: Verifica se o ficheiro manifest.json existe no servidor', 'error', testsContainer);
+        }
+      } catch (error) {
+        updateLastTest('❌ Erro ao aceder ao manifest', 'error', error.message);
+      }
+      
+      // Test 2: Service Worker
+      addTest('Verificando Service Worker...', 'pending', testsContainer);
+      
+      if ('serviceWorker' in navigator) {
+        updateLastTest('✅ Service Worker suportado', 'success', navigator.userAgent);
+        
+        try {
+          const registration = await navigator.serviceWorker.register(`${BASE_URL}/sw.js`);
+          addTest('Service Worker registado com sucesso', 'success', testsContainer, `Scope: ${registration.scope}`);
+        } catch (error) {
+          addTest('❌ Erro ao registar Service Worker', 'error', testsContainer, error.message);
+        }
+      } else {
+        updateLastTest('❌ Service Worker não suportado', 'error', 'Este navegador não suporta Service Workers');
+      }
+      
+      // Test 3: beforeinstallprompt
+      addTest('Verificando suporte para instalação PWA...', 'pending', testsContainer);
+      
+      if ('onbeforeinstallprompt' in window) {
+        updateLastTest('✅ beforeinstallprompt suportado', 'success', 'Este navegador suporta instalação PWA');
+      } else {
+        updateLastTest('⚠️ beforeinstallprompt não disparou ainda', 'pending', 'Pode ser normal, espera alguns segundos');
+      }
+      
+      // Test 4: HTTPS check
+      addTest('Verificando protocolo HTTPS...', 'pending', testsContainer);
+      
+      if (window.location.protocol === 'https:') {
+        updateLastTest('✅ HTTPS ativado', 'success', window.location.href);
+      } else if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+        updateLastTest('✅ Localhost (HTTPS não obrigatório)', 'success', window.location.href);
+      } else {
+        updateLastTest('❌ HTTP detectado - PWA precisa HTTPS', 'error', window.location.href);
+      }
+      
+      // Test 5: Meta tags
+      addTest('Verificando meta tags PWA...', 'pending', testsContainer);
+      
+      const checks = {
+        'manifest': 'link[rel="manifest"]',
+        'theme-color': 'meta[name="theme-color"]',
+        'apple-capable': 'meta[name="apple-mobile-web-app-capable"]',
+        'viewport': 'meta[name="viewport"]'
+      };
+      
+      let allPresent = true;
+      for (const [name, selector] of Object.entries(checks)) {
+        if (!document.querySelector(selector)) {
+          addTest(`❌ Falta: ${name}`, 'error', testsContainer);
+          allPresent = false;
+        }
+      }
+      
+      if (allPresent) {
+        updateLastTest('✅ Todos os meta tags presentes', 'success', 'PWA está bem configurado');
+      }
+    }
+    
+    function addTest(title, status, container, details = '') {
+      const testDiv = document.createElement('div');
+      testDiv.className = `test ${status}`;
+      
+      const icon = {
+        'success': '✅',
+        'error': '❌',
+        'pending': `<span class="loading">⏳</span>`
+      }[status];
+      
+      testDiv.innerHTML = `
+        <div class="test-title"><span class="icon">${icon}</span>${title}</div>
+        ${details ? `<div class="test-result">${details}</div>` : ''}
+      `;
+      
+      container.appendChild(testDiv);
+      return testDiv;
+    }
+    
+    function updateLastTest(title, status, details = '') {
+      const lastTest = document.querySelector('.test:last-child');
+      if (lastTest) {
+        lastTest.className = `test ${status}`;
+        lastTest.innerHTML = `
+          <div class="test-title"><span class="icon">${{
+            'success': '✅',
+            'error': '❌',
+            'pending': '⏳'
+          }[status]}</span>${title}</div>
+          ${details ? `<div class="test-result">${details}</div>` : ''}
+        `;
+      }
+    }
+    
+    // Run tests when page loads
+    window.addEventListener('load', runTests);
+    
+    // Listen for install prompt
+    window.addEventListener('beforeinstallprompt', (e) => {
+      console.log('beforeinstallprompt disparou!');
+      const statusDiv = document.querySelector('.test:nth-child(3)');
+      if (statusDiv) {
+        statusDiv.className = 'test success';
+        statusDiv.innerHTML = `
+          <div class="test-title"><span class="icon">✅</span>beforeinstallprompt disparou</div>
+          <div class="test-result">Clica em "Instalar" se quiseres testar</div>
+        `;
+      }
+    });
+  </script>
+</body>
+</html>
