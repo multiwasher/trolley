@@ -398,9 +398,11 @@
     <!-- Modal de Loading -->
     <div id="loading-modal" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-[95] hidden flex items-center justify-center">
         <div class="flex flex-col items-center gap-4">
-            <video src="https://video.wixstatic.com/video/a6967f_515ee3348cdb49e1816eec2fa30fdd00/720p/mp4/file.mp4" 
-                   class="w-32 h-32 lg:w-48 lg:h-48 object-contain" 
-                   autoplay loop muted playsinline></video>
+            <div class="rounded-3xl overflow-hidden bg-white/5">
+                <video src="https://video.wixstatic.com/video/a6967f_515ee3348cdb49e1816eec2fa30fdd00/720p/mp4/file.mp4" 
+                       class="w-32 h-32 lg:w-48 lg:h-48 object-contain" 
+                       autoplay loop muted playsinline></video>
+            </div>
             <p class="text-white text-sm font-bold uppercase tracking-widest">A carregar...</p>
         </div>
     </div>
