@@ -10,6 +10,7 @@
     <meta name="apple-mobile-web-app-title" content="TrolleyCheck">
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'><rect fill='%232563eb' width='192' height='192'/><text x='50%' y='50%' dominant-baseline='middle' text-anchor='middle' font-size='100' font-weight='bold' fill='white' font-family='Arial'>T</text></svg>">
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script>
         // Registar o Service Worker
         if ('serviceWorker' in navigator) {
@@ -397,7 +398,14 @@
         <div class="w-full md:w-11/12 md:max-w-6xl bg-white rounded-t-[3rem] md:rounded-3xl p-6 max-h-[80vh] flex flex-col shadow-2xl">
             <div class="flex justify-between items-center mb-6">
                 <h2 class="text-2xl font-black text-slate-800">Histórico de Registos</h2>
-                <button id="btn-close-trolleys-modal" class="text-2xl text-slate-400 hover:text-slate-800">✕</button>
+                <div class="flex gap-2 items-center">
+                    <button id="btn-select-all-trolleys" class="hidden px-3 py-1 text-sm font-bold bg-slate-200 text-slate-800 rounded-lg hover:bg-slate-300 transition">Selecionar Tudo</button>
+                    <button id="btn-download-selected" class="hidden px-4 py-2 text-sm font-bold bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition flex items-center gap-2">
+                        <span>⬇️</span>
+                        <span>Download <span id="selected-count">0</span></span>
+                    </button>
+                    <button id="btn-close-trolleys-modal" class="text-2xl text-slate-400 hover:text-slate-800">✕</button>
+                </div>
             </div>
             <div id="trolleys-list" class="flex-grow overflow-y-auto grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4"></div>
         </div>
@@ -611,24 +619,90 @@
                 
                 if (trolleyIds.length === 0) {
                     trolleysListContainer.innerHTML = '<div class="text-center py-10 text-slate-400">Nenhum registo encontrado</div>';
+                    document.getElementById('btn-select-all-trolleys').classList.add('hidden');
+                    document.getElementById('btn-download-selected').classList.add('hidden');
                 } else {
                     trolleysListContainer.innerHTML = trolleyIds.map(tid => `
-                        <div class="p-4 bg-slate-50 rounded-xl border border-slate-200 hover:border-blue-400 hover:shadow-lg transition-all cursor-pointer group trolley-item flex flex-col items-center text-center" data-trolley="${tid}">
-                            <p class="font-black text-slate-800 uppercase text-xl mb-2">${tid}</p>
+                        <div class="p-4 bg-slate-50 rounded-xl border border-slate-200 hover:border-blue-400 hover:shadow-lg transition-all group trolley-item relative flex flex-col items-center text-center" data-trolley="${tid}">
+                            <input type="checkbox" class="trolley-checkbox absolute top-3 right-3 w-5 h-5 cursor-pointer" data-trolley="${tid}">
+                            <p class="font-black text-slate-800 uppercase text-xl mb-2 flex-grow flex items-center justify-center" style="cursor: pointer;">${tid}</p>
                             <p class="text-xs text-slate-500 mb-3 line-clamp-1">${trolleysList[tid].lastDate}</p>
-                            <div class="bg-blue-100 text-blue-600 font-black px-3 py-2 rounded-lg w-full">
+                            <div class="bg-blue-100 text-blue-600 font-black px-3 py-2 rounded-lg w-full" style="cursor: pointer;">
                                 ${trolleysList[tid].count} registo${trolleysList[tid].count !== 1 ? 's' : ''}
                             </div>
                         </div>
                     `).join('');
                     
-                    // Adicionar event listeners aos items
+                    // Mostrar botões de seleção
+                    document.getElementById('btn-select-all-trolleys').classList.remove('hidden');
+                    document.getElementById('btn-download-selected').classList.remove('hidden');
+                    
+                    // Rastrear seleções
+                    let selectedTrolleys = new Set();
+                    
+                    // Adicionar event listeners aos checkboxes
+                    document.querySelectorAll('.trolley-checkbox').forEach(checkbox => {
+                        checkbox.addEventListener('change', (e) => {
+                            const tid = e.target.getAttribute('data-trolley');
+                            if (e.target.checked) {
+                                selectedTrolleys.add(tid);
+                            } else {
+                                selectedTrolleys.delete(tid);
+                            }
+                            updateDownloadButtonCount();
+                        });
+                    });
+                    
+                    // Adicionar event listeners aos items (para abrir fotos)
                     document.querySelectorAll('.trolley-item').forEach(item => {
-                        item.addEventListener('click', () => {
+                        item.addEventListener('click', (e) => {
+                            // Não abrir modal se clicou no checkbox
+                            if (e.target.classList.contains('trolley-checkbox')) return;
+                            
                             const tid = item.getAttribute('data-trolley');
                             showTrolleyPhotos(tid);
                         });
                     });
+                    
+                    // Função para atualizar contador do botão
+                    function updateDownloadButtonCount() {
+                        const count = selectedTrolleys.size;
+                        document.getElementById('selected-count').textContent = count;
+                        const btn = document.getElementById('btn-download-selected');
+                        if (count > 0) {
+                            btn.disabled = false;
+                            btn.classList.remove('opacity-50');
+                        } else {
+                            btn.disabled = true;
+                            btn.classList.add('opacity-50');
+                        }
+                    }
+                    
+                    // Event listener para "Selecionar Tudo"
+                    document.getElementById('btn-select-all-trolleys').addEventListener('click', () => {
+                        const allCheckboxes = document.querySelectorAll('.trolley-checkbox');
+                        const allChecked = selectedTrolleys.size === trolleyIds.length;
+                        
+                        allCheckboxes.forEach(cb => {
+                            cb.checked = !allChecked;
+                            const tid = cb.getAttribute('data-trolley');
+                            if (!allChecked) {
+                                selectedTrolleys.add(tid);
+                            } else {
+                                selectedTrolleys.delete(tid);
+                            }
+                        });
+                        updateDownloadButtonCount();
+                    });
+                    
+                    // Event listener para Download de Selecionados
+                    document.getElementById('btn-download-selected').addEventListener('click', async () => {
+                        await downloadSelectedTrolleyPhotos(selectedTrolleys);
+                    });
+                    
+                    // Passar selectedTrolleys para função de download
+                    window.selectedTrolleys = selectedTrolleys;
+                    window.trolleysList = trolleysList;
                 }
                 
                 // Mostrar modal
@@ -845,6 +919,124 @@
                 document.getElementById('trolley-photos-list').innerHTML = '<div class="w-full text-center py-10 text-slate-400">Erro ao carregar fotos</div>';
                 document.getElementById('trolleys-modal').classList.add('hidden');
                 document.getElementById('trolley-photos-modal').classList.remove('hidden');
+            }
+        }
+
+        // Função para fazer download de múltiplos trolleys
+        async function downloadSelectedTrolleyPhotos(selectedTrolleys) {
+            if (selectedTrolleys.size === 0) {
+                alert('Selecione pelo menos um registo');
+                return;
+            }
+
+            try {
+                console.log(`📦 Iniciando download de ${selectedTrolleys.size} trolley(s)...`);
+                
+                // Mostrar indicador de progresso
+                const btn = document.getElementById('btn-download-selected');
+                const originalText = btn.innerHTML;
+                btn.disabled = true;
+                btn.innerHTML = '<span>⏳</span><span>A preparar...</span>';
+                
+                const zip = new JSZip();
+                let totalPhotos = 0;
+                
+                // Buscar fotos para cada trolley selecionado
+                for (const trolleyId of selectedTrolleys) {
+                    const photosList = [];
+                    
+                    if (db) {
+                        try {
+                            const urlsRef = collection(db, 'artifacts', appId, 'public', 'data', 'photo_urls');
+                            const urlsSnapshot = await getDocs(urlsRef);
+                            
+                            urlsSnapshot.docs.forEach((d) => {
+                                const data = d.data();
+                                
+                                if (String(data.trolleyId) === String(trolleyId)) {
+                                    let previewUrl = data.previewUrl || null;
+                                    let downloadUrl = data.downloadUrl || null;
+                                    
+                                    if (data.imagemBase64 && !previewUrl) {
+                                        previewUrl = `data:image/jpeg;base64,${data.imagemBase64}`;
+                                        downloadUrl = `data:image/jpeg;base64,${data.imagemBase64}`;
+                                    }
+                                    
+                                    photosList.push({
+                                        step: data.step,
+                                        stepTitle: steps[data.step]?.title || `Passo ${data.step}`,
+                                        timestamp: data.dataHora || new Date(data.timestamp).toLocaleString('pt-PT'),
+                                        previewUrl: previewUrl,
+                                        downloadUrl: downloadUrl,
+                                        filename: data.filename || `Trolley_${trolleyId}_P${data.step}_${Date.now()}.jpg`
+                                    });
+                                }
+                            });
+                        } catch (e) {
+                            console.warn(`⚠️ Erro a carregar fotos do trolley ${trolleyId}:`, e.message);
+                        }
+                    }
+                    
+                    // Adicionar fotos ao ZIP
+                    if (photosList.length > 0) {
+                        const trolleyFolder = zip.folder(trolleyId);
+                        
+                        for (const photo of photosList) {
+                            try {
+                                // Se for data URL de base64
+                                if (photo.downloadUrl.startsWith('data:image')) {
+                                    const base64Data = photo.downloadUrl.split(',')[1];
+                                    trolleyFolder.file(photo.filename, base64Data, { base64: true });
+                                    totalPhotos++;
+                                } else {
+                                    // Se for URL remota, fazer fetch
+                                    const response = await fetch(photo.downloadUrl);
+                                    const blob = await response.blob();
+                                    trolleyFolder.file(photo.filename, blob);
+                                    totalPhotos++;
+                                }
+                            } catch (e) {
+                                console.warn(`⚠️ Erro ao adicionar foto ${photo.filename}:`, e.message);
+                            }
+                        }
+                    }
+                }
+                
+                if (totalPhotos === 0) {
+                    alert('Nenhuma foto encontrada para os trolleys selecionados');
+                    btn.disabled = false;
+                    btn.innerHTML = originalText;
+                    return;
+                }
+                
+                // Gerar ZIP
+                btn.innerHTML = '<span>⏳</span><span>Comprimindo...</span>';
+                const zipBlob = await zip.generateAsync({ type: 'blob' });
+                
+                // Fazer download
+                const url = URL.createObjectURL(zipBlob);
+                const timestamp = new Date().toLocaleString('pt-PT').replace(/[\/\s:]/g, '-');
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `TrolleyCheck_${selectedTrolleys.size}trolleys_${totalPhotos}fotos_${timestamp}.zip`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                
+                console.log(`✅ Download concluído: ${totalPhotos} foto(s)`);
+                
+                // Restaurar botão
+                btn.disabled = false;
+                btn.innerHTML = originalText;
+                alert(`✅ Download concluído: ${totalPhotos} foto(s) de ${selectedTrolleys.size} trolley(s)`);
+                
+            } catch (error) {
+                console.error('❌ Erro ao fazer download:', error);
+                alert('Erro ao fazer download. Tente novamente.');
+                const btn = document.getElementById('btn-download-selected');
+                btn.disabled = false;
+                btn.innerHTML = '<span>⬇️</span><span>Download <span id="selected-count">0</span></span>';
             }
         }
 
