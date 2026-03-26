@@ -218,15 +218,17 @@
 
     <!-- Cabeçalho -->
     <nav class="sticky top-0 z-40 bg-white/90 backdrop-blur-md border-b border-white/10 px-4 py-3 flex justify-between items-center shadow-lg">
-        <div>
-            <h1 class="text-slate-900 font-black text-lg tracking-tight leading-none uppercase">Trolley<p></p>Check</h1>
-            <span class="text-[10px] text-slate-500 font-bold uppercase tracking-widest"></span>
-        </div>
-        
-        <div class="h-12 flex items-center justify-between gap-3">
+        <div class="flex items-center gap-3">
             <img src="https://static.wixstatic.com/media/a6967f_bd2c8d054c2e4bc2a992f21106be991e~mv2.png" 
                  alt="Logo" 
-                 class="h-full w-auto object-contain">
+                 class="h-12 w-auto object-contain">
+            <div>
+                <h1 class="text-slate-900 font-black text-lg tracking-tight leading-none uppercase">Trolley<p></p>Check</h1>
+                <span class="text-[10px] text-slate-500 font-bold uppercase tracking-widest"></span>
+            </div>
+        </div>
+        
+        <div class="h-12 flex items-center justify-end gap-3">
             <!-- Icon de Alerta para PWA -->
             <button id="btn-install-pwa" class="hidden relative w-8 h-8 text-slate-600 hover:text-blue-600 transition-colors" title="Instalar aplicação">
                 <svg class="w-full h-full" fill="none" stroke="currentColor" viewBox="0 0 24 24">
