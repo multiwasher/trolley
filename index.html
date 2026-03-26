@@ -395,6 +395,16 @@
         </div>
     </div>
 
+    <!-- Modal de Loading -->
+    <div id="loading-modal" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-[95] hidden flex items-center justify-center">
+        <div class="flex flex-col items-center gap-4">
+            <video src="https://video.wixstatic.com/video/a6967f_515ee3348cdb49e1816eec2fa30fdd00/720p/mp4/file.mp4" 
+                   class="w-32 h-32 lg:w-48 lg:h-48 object-contain" 
+                   autoplay loop muted playsinline></video>
+            <p class="text-white text-sm font-bold uppercase tracking-widest">A carregar...</p>
+        </div>
+    </div>
+
     <!-- Modal Trolleys (Histórico) -->
     <div id="trolleys-modal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-[90] hidden flex items-end md:items-center md:justify-center">
         <div class="w-full md:w-11/12 md:max-w-6xl bg-white rounded-t-[3rem] md:rounded-3xl p-6 max-h-[80vh] flex flex-col shadow-2xl">
@@ -464,6 +474,17 @@
     <div id="photo-toast-container" class="fixed bottom-40 left-1/2 transform -translate-x-1/2 z-50 pointer-events-none"></div>
 
     <script>
+        // Funções de Loading
+        window.showLoading = function() {
+            const modal = document.getElementById('loading-modal');
+            if (modal) modal.classList.remove('hidden');
+        };
+
+        window.hideLoading = function() {
+            const modal = document.getElementById('loading-modal');
+            if (modal) modal.classList.add('hidden');
+        };
+
         // Funções globais para onclick handlers
         window.openPhotoViewer = function(photo) {
             // Delegará para a função do módulo
@@ -591,6 +612,8 @@
         // Função para mostrar histórico de trolleys
         async function showTrolleysHistory() {
             try {
+                window.showLoading();
+                
                 // Carregar trolleys do Firebase
                 const trolleysList = {};
                 
@@ -708,10 +731,12 @@
                 }
                 
                 // Mostrar modal
+                window.hideLoading();
                 document.getElementById('trolleys-modal').classList.remove('hidden');
             } catch (error) {
                 console.error('Erro ao carregar trolleys:', error);
                 document.getElementById('trolleys-list').innerHTML = '<div class="text-center py-10 text-slate-400">Erro ao carregar registos</div>';
+                window.hideLoading();
                 document.getElementById('trolleys-modal').classList.remove('hidden');
             }
         }
@@ -812,6 +837,8 @@
         // Mostrar fotos de um trolley específico
         async function showTrolleyPhotos(trolleyId) {
             try {
+                window.showLoading();
+                
                 const photosList = [];
                 
                 console.log(`🔍 Procurando fotos para trolleyId: "${trolleyId}" (tipo: ${typeof trolleyId})`);
@@ -914,11 +941,13 @@
                 }
                 
                 // Mostrar modal de fotos
+                window.hideLoading();
                 document.getElementById('trolleys-modal').classList.add('hidden');
                 document.getElementById('trolley-photos-modal').classList.remove('hidden');
             } catch (error) {
                 console.error('Erro ao carregar fotos:', error);
                 document.getElementById('trolley-photos-list').innerHTML = '<div class="w-full text-center py-10 text-slate-400">Erro ao carregar fotos</div>';
+                window.hideLoading();
                 document.getElementById('trolleys-modal').classList.add('hidden');
                 document.getElementById('trolley-photos-modal').classList.remove('hidden');
             }
@@ -932,6 +961,7 @@
             }
 
             try {
+                window.showLoading();
                 console.log(`📦 Iniciando download de ${selectedTrolleys.size} trolley(s)...`);
                 
                 // Mostrar indicador de progresso
@@ -1008,6 +1038,7 @@
                     alert('Nenhuma foto encontrada para os trolleys selecionados');
                     btn.disabled = false;
                     btn.innerHTML = originalText;
+                    window.hideLoading();
                     return;
                 }
                 
@@ -1029,6 +1060,7 @@
                 console.log(`✅ Download concluído: ${totalPhotos} foto(s)`);
                 
                 // Restaurar botão
+                window.hideLoading();
                 btn.disabled = false;
                 btn.innerHTML = originalText;
                 alert(`✅ Download concluído: ${totalPhotos} foto(s) de ${selectedTrolleys.size} trolley(s)`);
@@ -1036,6 +1068,7 @@
             } catch (error) {
                 console.error('❌ Erro ao fazer download:', error);
                 alert('Erro ao fazer download. Tente novamente.');
+                window.hideLoading();
                 const btn = document.getElementById('btn-download-selected');
                 btn.disabled = false;
                 btn.innerHTML = '<span>⬇️</span><span>Download <span id="selected-count">0</span></span>';
