@@ -791,12 +791,6 @@
                     resolve(false);
                 }
             });
-                
-                request.onerror = () => {
-                    console.error('❌ Erro ao guardar foto offline:', request.error);
-                    resolve(false);
-                };
-            });
         }
 
         // Sincronizar fotos pendentes com Firebase
