@@ -1107,7 +1107,10 @@
                         if (!trolleysList[tid]) {
                             trolleysList[tid] = { count: 0, lastDate: '', timestamp: 0 };
                         }
-                        trolleysList[tid].count++;
+                        // Não contar registos placeholder (criados para manter o ID offline)
+                        if (!data.isPlaceholder) {
+                            trolleysList[tid].count++;
+                        }
                         trolleysList[tid].lastDate = data.data_hora || new Date(data.timestamp).toLocaleString('pt-PT');
                         // Manter timestamp para ordenação
                         trolleysList[tid].timestamp = Math.max(trolleysList[tid].timestamp, data.timestamp || 0);
