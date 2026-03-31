@@ -544,12 +544,57 @@
 
         // Verificar se o ID do trolley já existe no Firebase
         async function checkTrolleyIdExists(id) {
+            // Se está offline, apenas verificar localmente
+            if (!isOnline) {
+                console.log('📴 Offline - verificações apenas locais');
+                
+                // Verificar em localStorage
+                if (sessionArchive[id]) {
+                    console.log(`⚠️ ID "${id}" já existe em localStorage`);
+                    return true;
+                }
+                
+                // Verificar em IndexedDB
+                if (offlineDBReady && offlineDB) {
+                    return new Promise((resolve) => {
+                        try {
+                            const transaction = offlineDB.transaction(['trolleys_pending'], 'readonly');
+                            const store = transaction.objectStore('trolleys_pending');
+                            const request = store.get(id);
+                            
+                            request.onsuccess = () => {
+                                if (request.result) {
+                                    console.log(`⚠️ ID "${id}" já existe em IndexedDB`);
+                                    resolve(true);
+                                } else {
+                                    console.log(`✅ ID "${id}" disponível localmente`);
+                                    resolve(false);
+                                }
+                            };
+                            
+                            request.onerror = () => {
+                                console.error('Erro ao verificar IndexedDB:', request.error);
+                                resolve(false);
+                            };
+                        } catch (error) {
+                            console.error('Erro ao verificar ID localmente:', error);
+                            resolve(false);
+                        }
+                    });
+                }
+                
+                return false; // Permitir criar se não encontrou localmente
+            }
+
+            // Se está online, verificar Firebase
             if (!db) {
                 console.warn('⚠️ Firestore ainda não está inicializado');
                 return false;
             }
 
             try {
+                console.log(`🌐 Verificando ID "${id}" em Firebase...`);
+                
                 // Tentar verificar no caminho direto primeiro
                 let DocsRef = collection(db, 'photos');
                 let q = query(DocsRef, where('trolleyId', '==', id));
