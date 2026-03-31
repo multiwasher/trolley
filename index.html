@@ -1656,6 +1656,7 @@
                 
                 // Renderizar grid de passos
                 renderStepsGrid();
+                history.pushState({ app: 'grid' }, '');
                 
                 console.log(`✏️ Editando trolley: ${id}`);
             } catch (error) {
@@ -1931,6 +1932,7 @@
             document.getElementById('footer-nav').classList.remove('hidden');
             document.querySelector('.tabs-nav').classList.remove('hidden');
             renderStep();
+            history.pushState({ app: 'grid' }, '');
         });
 
         async function savePhoto(dataUrl) {
@@ -2262,6 +2264,9 @@
             document.getElementById('footer-nav').classList.remove('hidden');
             
             renderStepContent();
+            
+            // Registar estado no histórico do browser para interceptar o botão de retroceder
+            history.pushState({ app: 'step' }, '');
         }
 
         function closeStep() {
@@ -2940,6 +2945,30 @@
         }
 
         initApp();
+
+        // ==================== BOTÃO DE RETROCEDER (ANDROID) ====================
+        // Definir estado inicial para que o botão de retroceder do Android
+        // seja sempre interceptado dentro da app (nunca sai/perde dados)
+        history.replaceState({ app: 'setup' }, '');
+
+        window.addEventListener('popstate', () => {
+            if (isViewingStep) {
+                // Estava num passo → volta ao grid (as fotos já foram gravadas)
+                closeStep();
+                history.pushState({ app: 'grid' }, '');
+                return;
+            }
+
+            const appContainer = document.getElementById('app-container');
+            if (!appContainer.classList.contains('hidden')) {
+                // Estava no grid de passos → fica no grid (não sai)
+                history.pushState({ app: 'grid' }, '');
+                return;
+            }
+
+            // Está no ecrã inicial → fica na app (não fecha)
+            history.pushState({ app: 'setup' }, '');
+        });
     </script>
 </body>
 </html>
