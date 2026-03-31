@@ -771,7 +771,7 @@
                     const transaction = offlineDB.transaction(['photos'], 'readwrite');
                     const store = transaction.objectStore('photos');
                     
-                    photoData.synced = false;
+                    photoData.synced = 0;
                     photoData.timestamp = Date.now();
                     
                     const request = store.add(photoData);
@@ -814,7 +814,7 @@
                     const transaction = offlineDB.transaction(['photos'], 'readonly');
                     const store = transaction.objectStore('photos');
                     const index = store.index('synced');
-                    const range = IDBKeyRange.only(false);
+                    const range = IDBKeyRange.only(0);
                     const request = index.getAll(range);
                     
                     let synced = false;
@@ -849,7 +849,7 @@
                                 // Marcar como sincronizado
                                 const updateTx = offlineDB.transaction(['photos'], 'readwrite');
                                 const updateStore = updateTx.objectStore('photos');
-                                photo.synced = true;
+                                photo.synced = 1;
                                 updateStore.put(photo);
                                 
                                 console.log(`✅ Foto sincronizada: ${photo.filename}`);
@@ -888,7 +888,7 @@
                     const transaction = offlineDB.transaction(['trolleys_pending'], 'readwrite');
                     const store = transaction.objectStore('trolleys_pending');
                     
-                    trolleyData.synced = false;
+                    trolleyData.synced = 0;
                     trolleyData.createdAt = Date.now();
                     
                     const request = store.add(trolleyData);
@@ -930,7 +930,7 @@
                     const transaction = offlineDB.transaction(['trolleys_pending'], 'readonly');
                     const store = transaction.objectStore('trolleys_pending');
                     const index = store.index('synced');
-                    const range = IDBKeyRange.only(false);
+                    const range = IDBKeyRange.only(0);
                     const request = index.getAll(range);
                     
                     let synced = false;
@@ -954,7 +954,7 @@
                                 // Marcar como sincronizado
                                 const updateTx = offlineDB.transaction(['trolleys_pending'], 'readwrite');
                                 const updateStore = updateTx.objectStore('trolleys_pending');
-                                trolley.synced = true;
+                                trolley.synced = 1;
                                 updateStore.put(trolley);
                                 
                                 console.log(`✅ Registo sincronizado: ${trolley.trolleyId}`);
@@ -2023,7 +2023,7 @@
                         if (offlineDB) {
                             const tx = offlineDB.transaction(['photos'], 'readwrite');
                             const store = tx.objectStore('photos');
-                            photoData.synced = true;
+                            photoData.synced = 1;
                             store.add(photoData);
                         }
                         
