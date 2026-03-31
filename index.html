@@ -599,6 +599,11 @@
                         store.createIndex('synced', 'synced', { unique: false });
                         console.log('✅ Object Store "photos" criado');
                     }
+                    if (!db.objectStoreNames.contains('trolleys_pending')) {
+                        const store = db.createObjectStore('trolleys_pending', { keyPath: 'trolleyId' });
+                        store.createIndex('synced', 'synced', { unique: false });
+                        console.log('✅ Object Store "trolleys_pending" criado');
+                    }
                 };
             });
         }
@@ -714,10 +719,100 @@
                         }
                     }
                     
-                    console.log('✨ Sincronização concluída');
+                    console.log('✨ Sincronização de fotos concluída');
                 };
             } catch (error) {
-                console.error('❌ Erro durante sincronização:', error);
+                console.error('❌ Erro durante sincronização de fotos:', error);
+            }
+        }
+
+        // Guardar trolley pendente em IndexedDB
+        async function saveTrolleyOffline(trolleyData) {
+            if (!offlineDB) {
+                console.warn('⚠️ IndexedDB não disponível');
+                return false;
+            }
+
+            return new Promise((resolve) => {
+                const transaction = offlineDB.transaction(['trolleys_pending'], 'readwrite');
+                const store = transaction.objectStore('trolleys_pending');
+                
+                trolleyData.synced = false;
+                trolleyData.createdAt = Date.now();
+                
+                const request = store.add(trolleyData);
+                
+                request.onsuccess = () => {
+                    console.log(`💾 Registo guardado offline (trolleyId: ${trolleyData.trolleyId})`);
+                    resolve(true);
+                };
+                
+                request.onerror = () => {
+                    console.error('❌ Erro ao guardar registo offline:', request.error);
+                    resolve(false);
+                };
+            });
+        }
+
+        // Sincronizar trolleys pendentes com Firebase
+        async function syncPendingTrolleys() {
+            if (!isOnline || !db || !user) {
+                console.log('⏳ Não é possível sincronizar registos agora (offline ou sem Firebase)');
+                return false;
+            }
+
+            if (!offlineDB) {
+                console.warn('⚠️ IndexedDB não disponível');
+                return false;
+            }
+
+            try {
+                console.log('🔄 Iniciando sincronização de registos pendentes...');
+                
+                const transaction = offlineDB.transaction(['trolleys_pending'], 'readonly');
+                const store = transaction.objectStore('trolleys_pending');
+                const index = store.index('synced');
+                const range = IDBKeyRange.only(false);
+                const request = index.getAll(range);
+                
+                let synced = false;
+                
+                request.onsuccess = async () => {
+                    const pendingTrolleys = request.result;
+                    console.log(`📤 Encontrados ${pendingTrolleys.length} registos pendentes`);
+                    
+                    for (const trolley of pendingTrolleys) {
+                        try {
+                            // Criar registro vazio no Firebase para o trolley
+                            await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'photos'), {
+                                trolleyId: String(trolley.trolleyId),
+                                step: 0,
+                                data_hora: trolley.createdAt ? new Date(trolley.createdAt).toLocaleString('pt-PT') : new Date().toLocaleString('pt-PT'),
+                                timestamp: trolley.createdAt || Date.now(),
+                                hasImage: false,
+                                isPlaceholder: true
+                            });
+                            
+                            // Marcar como sincronizado
+                            const updateTx = offlineDB.transaction(['trolleys_pending'], 'readwrite');
+                            const updateStore = updateTx.objectStore('trolleys_pending');
+                            trolley.synced = true;
+                            updateStore.put(trolley);
+                            
+                            console.log(`✅ Registo sincronizado: ${trolley.trolleyId}`);
+                            synced = true;
+                        } catch (error) {
+                            console.error(`❌ Erro ao sincronizar registo ${trolley.trolleyId}:`, error.message);
+                        }
+                    }
+                    
+                    console.log('✨ Sincronização de registos concluída');
+                };
+                
+                return synced;
+            } catch (error) {
+                console.error('❌ Erro durante sincronização de registos:', error);
+                return false;
             }
         }
 
@@ -725,12 +820,20 @@
         window.addEventListener('online', async () => {
             isOnline = true;
             console.log('🌐 Aplicação online - Iniciando sincronização...');
+            await syncPendingTrolleys();
             await syncPendingPhotos();
+            
+            // Recarregar histórico se estiver aberto
+            const trolleysModal = document.getElementById('trolleys-modal');
+            if (trolleysModal && !trolleysModal.classList.contains('hidden')) {
+                console.log('🔄 Recarregando histórico...');
+                showTrolleysHistory();
+            }
         });
 
         window.addEventListener('offline', () => {
             isOnline = false;
-            console.log('⚠️ Aplicação offline - Fotos serão guardadas localmente');
+            console.log('⚠️ Aplicação offline - Registos e fotos serão guardados localmente');
         });
 
         // Inicializar IndexedDB ao carregar app
@@ -1613,6 +1716,16 @@
             // Guardar a data de registo no primeiro elemento (metadata)
             sessionArchive[trolleyId]._registrationDate = dataRegisto;
             localStorage.setItem('trolley_session_archive', JSON.stringify(sessionArchive));
+            
+            // Guardar registo em IndexedDB se estiver offline
+            if (!isOnline) {
+                await saveTrolleyOffline({
+                    trolleyId: trolleyId,
+                    createdAt: Date.now(),
+                    dataRegisto: dataRegisto
+                });
+                console.log(`📴 Registo guardado offline: ${trolleyId}`);
+            }
             
             // Inicializar contador de fotos a 0
             document.getElementById('display-total-photos').innerText = '0';
