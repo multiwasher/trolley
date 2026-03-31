@@ -624,34 +624,80 @@
         // Inicializar IndexedDB para armazenamento offline
         async function initOfflineDB() {
             return new Promise((resolve, reject) => {
-                const request = indexedDB.open('TrolleyCheckDB', 2);
-                
-                request.onerror = () => {
-                    console.error('❌ Erro ao inicializar IndexedDB');
-                    reject(request.error);
-                };
-                
-                request.onsuccess = () => {
-                    offlineDB = request.result;
-                    offlineDBReady = true;
-                    console.log('✅ IndexedDB inicializado e pronto');
-                    resolve();
-                };
-                
-                request.onupgradeneeded = (event) => {
-                    const db = event.target.result;
-                    if (!db.objectStoreNames.contains('photos')) {
-                        const store = db.createObjectStore('photos', { keyPath: 'id', autoIncrement: true });
-                        store.createIndex('trolleyId', 'trolleyId', { unique: false });
-                        store.createIndex('synced', 'synced', { unique: false });
-                        console.log('✅ Object Store "photos" criado');
-                    }
-                    if (!db.objectStoreNames.contains('trolleys_pending')) {
-                        const store = db.createObjectStore('trolleys_pending', { keyPath: 'trolleyId' });
-                        store.createIndex('synced', 'synced', { unique: false });
-                        console.log('✅ Object Store "trolleys_pending" criado');
-                    }
-                };
+                try {
+                    console.log('🔄 Iniciando abertura de IndexedDB...');
+                    const request = indexedDB.open('TrolleyCheckDB', 2);
+                    
+                    request.onerror = () => {
+                        console.error('❌ Erro ao inicializar IndexedDB:', request.error);
+                        offlineDBReady = false;
+                        reject(request.error);
+                    };
+                    
+                    request.onblocked = () => {
+                        console.warn('⚠️ IndexedDB bloqueado - outra aba pode estar usando');
+                    };
+                    
+                    request.onupgradeneeded = (event) => {
+                        console.log('🔧 onupgradeneeded disparado - criando stores...');
+                        const db = event.target.result;
+                        try {
+                            if (!db.objectStoreNames.contains('photos')) {
+                                const store = db.createObjectStore('photos', { keyPath: 'id', autoIncrement: true });
+                                store.createIndex('trolleyId', 'trolleyId', { unique: false });
+                                store.createIndex('synced', 'synced', { unique: false });
+                                console.log('✅ Object Store "photos" criado');
+                            }
+                            if (!db.objectStoreNames.contains('trolleys_pending')) {
+                                const store = db.createObjectStore('trolleys_pending', { keyPath: 'trolleyId' });
+                                store.createIndex('synced', 'synced', { unique: false });
+                                console.log('✅ Object Store "trolleys_pending" criado');
+                            }
+                        } catch (e) {
+                            console.error('❌ Erro ao criar object stores:', e);
+                        }
+                    };
+                    
+                    request.onsuccess = () => {
+                        try {
+                            offlineDB = request.result;
+                            
+                            // Verificar se os stores foram criados
+                            const storeNames = Array.from(offlineDB.objectStoreNames);
+                            console.log('📦 Object stores disponíveis:', storeNames);
+                            
+                            if (!storeNames.includes('photos') || !storeNames.includes('trolleys_pending')) {
+                                console.warn('⚠️ Alguns stores estão faltando. Tentando novamente com versão 3...');
+                                offlineDB.close();
+                                // Tentar novamente com versão incrementada
+                                const retryRequest = indexedDB.open('TrolleyCheckDB', 3);
+                                retryRequest.onsuccess = () => {
+                                    offlineDB = retryRequest.result;
+                                    offlineDBReady = true;
+                                    console.log('✅ IndexedDB inicializado e pronto (retry)');
+                                    resolve();
+                                };
+                                retryRequest.onerror = () => {
+                                    console.error('❌ Retry failed:', retryRequest.error);
+                                    reject(retryRequest.error);
+                                };
+                                return;
+                            }
+                            
+                            offlineDBReady = true;
+                            console.log('✅ IndexedDB inicializado e pronto');
+                            resolve();
+                        } catch (e) {
+                            console.error('❌ Erro ao processar onsuccess:', e);
+                            offlineDBReady = false;
+                            reject(e);
+                        }
+                    };
+                } catch (e) {
+                    console.error('❌ Erro durante inicialização de IndexedDB:', e);
+                    offlineDBReady = false;
+                    reject(e);
+                }
             });
         }
 
