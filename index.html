@@ -625,11 +625,26 @@
         async function initOfflineDB() {
             return new Promise((resolve, reject) => {
                 try {
+                    // Verificar disponibilidade de IndexedDB
+                    if (!window.indexedDB) {
+                        console.error('❌ IndexedDB não disponível no navegador');
+                        offlineDBReady = false;
+                        return reject(new Error('IndexedDB not available'));
+                    }
+                    
                     console.log('🔄 Iniciando abertura de IndexedDB...');
                     const request = indexedDB.open('TrolleyCheckDB', 2);
                     
+                    // Timeout de 5 segundos para inicialização
+                    const timeoutId = setTimeout(() => {
+                        console.error('❌ IndexedDB timeout - inicialização levou muito tempo');
+                        offlineDBReady = false;
+                        reject(new Error('IndexedDB initialization timeout'));
+                    }, 5000);
+                    
                     request.onerror = () => {
-                        console.error('❌ Erro ao inicializar IndexedDB:', request.error);
+                        clearTimeout(timeoutId);
+                        console.error('❌ Erro ao inicializar IndexedDB:', request.error?.message || request.error);
                         offlineDBReady = false;
                         reject(request.error);
                     };
@@ -659,6 +674,7 @@
                     };
                     
                     request.onsuccess = () => {
+                        clearTimeout(timeoutId);
                         try {
                             offlineDB = request.result;
                             
@@ -679,6 +695,7 @@
                                 };
                                 retryRequest.onerror = () => {
                                     console.error('❌ Retry failed:', retryRequest.error);
+                                    offlineDBReady = false;
                                     reject(retryRequest.error);
                                 };
                                 return;
@@ -699,6 +716,23 @@
                     reject(e);
                 }
             });
+        }
+        
+        // Wrapper para garantir que IndexedDB está pronto
+        async function ensureOfflineDBReady() {
+            if (offlineDB) {
+                return true; // Já está pronto
+            }
+            if (offlineDBReady) {
+                return true; // Inicialização em progresso, já foi iniciada
+            }
+            try {
+                await initOfflineDB();
+                return true;
+            } catch (err) {
+                console.error('Erro ao garantir disponibilidade de IndexedDB:', err);
+                return false;
+            }
         }
 
         // Comprimir imagem para 85% quality
@@ -725,25 +759,38 @@
 
         // Guardar foto em IndexedDB (offline)
         async function savePhotoOffline(photoData) {
-            if (!offlineDB) {
-                console.warn('⚠️ IndexedDB não disponível');
+            // Ensure IndexedDB is ready before attempting to save
+            const ready = await ensureOfflineDBReady();
+            if (!ready || !offlineDB) {
+                console.warn('⚠️ IndexedDB não disponível após tentativa de inicialização');
                 return false;
             }
 
             return new Promise((resolve) => {
-                const transaction = offlineDB.transaction(['photos'], 'readwrite');
-                const store = transaction.objectStore('photos');
-                
-                photoData.synced = false;
-                photoData.timestamp = Date.now();
-                
-                const request = store.add(photoData);
-                
-                request.onsuccess = () => {
-                    console.log(`💾 Foto guardada offline (ID: ${request.result})`);
-                    pendingSyncQueue.push(photoData);
-                    resolve(true);
-                };
+                try {
+                    const transaction = offlineDB.transaction(['photos'], 'readwrite');
+                    const store = transaction.objectStore('photos');
+                    
+                    photoData.synced = false;
+                    photoData.timestamp = Date.now();
+                    
+                    const request = store.add(photoData);
+                    
+                    request.onsuccess = () => {
+                        console.log(`💾 Foto guardada offline (ID: ${request.result})`);
+                        pendingSyncQueue.push(photoData);
+                        resolve(true);
+                    };
+                    
+                    request.onerror = () => {
+                        console.error('❌ Erro ao guardar foto offline:', request.error);
+                        resolve(false);
+                    };
+                } catch (e) {
+                    console.error('❌ Erro transação de foto:', e);
+                    resolve(false);
+                }
+            });
                 
                 request.onerror = () => {
                     console.error('❌ Erro ao guardar foto offline:', request.error);
@@ -759,8 +806,10 @@
                 return false;
             }
 
-            if (!offlineDB) {
-                console.warn('⚠️ IndexedDB não disponível');
+            // Ensure IndexedDB is ready
+            const ready = await ensureOfflineDBReady();
+            if (!ready || !offlineDB) {
+                console.warn('⚠️ IndexedDB não disponível para sync');
                 return false;
             }
 
@@ -833,31 +882,37 @@
 
         // Guardar trolley pendente em IndexedDB
         async function saveTrolleyOffline(trolleyData) {
-            if (!offlineDB) {
-                console.warn('⚠️ IndexedDB não disponível');
+            // Ensure IndexedDB is ready before attempting to save
+            const ready = await ensureOfflineDBReady();
+            if (!ready || !offlineDB) {
+                console.warn('⚠️ IndexedDB não disponível após tentativa de inicialização');
                 return false;
             }
 
             return new Promise((resolve) => {
-                const transaction = offlineDB.transaction(['trolleys_pending'], 'readwrite');
-                const store = transaction.objectStore('trolleys_pending');
-                
-                trolleyData.synced = false;
-                trolleyData.createdAt = Date.now();
-                
-                const request = store.add(trolleyData);
-                
-                request.onsuccess = () => {
-                    console.log(`💾 Registo guardado offline (trolleyId: ${trolleyData.trolleyId})`);
-                    resolve(true);
-                };
-                
-                request.onerror = () => {
-                    console.error('❌ Erro ao guardar registo offline:', request.error);
+                try {
+                    const transaction = offlineDB.transaction(['trolleys_pending'], 'readwrite');
+                    const store = transaction.objectStore('trolleys_pending');
+                    
+                    trolleyData.synced = false;
+                    trolleyData.createdAt = Date.now();
+                    
+                    const request = store.add(trolleyData);
+                    
+                    request.onsuccess = () => {
+                        console.log(`💾 Registo guardado offline (trolleyId: ${trolleyData.trolleyId})`);
+                        resolve(true);
+                    };
+                    
+                    request.onerror = () => {
+                        console.error('❌ Erro ao guardar registo offline:', request.error);
+                        resolve(false);
+                    };
+                } catch (e) {
+                    console.error('❌ Erro na transação de trolley:', e);
                     resolve(false);
-                };
+                }
             });
-        }
 
         // Sincronizar trolleys pendentes com Firebase
         async function syncPendingTrolleys() {
@@ -866,8 +921,10 @@
                 return false;
             }
 
-            if (!offlineDB) {
-                console.warn('⚠️ IndexedDB não disponível');
+            // Ensure IndexedDB is ready
+            const ready = await ensureOfflineDBReady();
+            if (!ready || !offlineDB) {
+                console.warn('⚠️ IndexedDB não disponível para sync');
                 return false;
             }
 
@@ -961,8 +1018,18 @@
             console.log('⚠️ Aplicação offline - Registos e fotos serão guardados localmente');
         });
 
-        // Inicializar IndexedDB ao carregar app
-        initOfflineDB().catch(err => console.error('Erro ao inicializar offline DB:', err));
+        // Inicializar IndexedDB ao carregar app (não bloqueia o carregamento)
+        console.log('📋 Iniciando app...');
+        (async () => {
+            try {
+                console.log('🔄 Tentando inicializar IndexedDB...');
+                await initOfflineDB();
+                console.log('✅ IndexedDB pronto para uso');
+            } catch (err) {
+                console.error('❌ Erro ao inicializar offline DB:', err);
+                console.log('⚠️ App funcionará com armazenamento limitado (localStorage apenas)');
+            }
+        })();
 
         function switchTab(tab) {
             const isRegisto = tab === 'registo';
