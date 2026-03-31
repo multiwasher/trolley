@@ -1,4 +1,4 @@
-const CACHE_NAME = 'trolleycheck-v28';
+const CACHE_NAME = 'trolleycheck-v29';
 const urlsToCache = [
   '/',
   'index.html'
