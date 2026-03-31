@@ -574,6 +574,7 @@
         let offlineDB = null;
         let isOnline = navigator.onLine;
         let pendingSyncQueue = [];
+        let offlineDBReady = false;
 
         // Inicializar IndexedDB para armazenamento offline
         async function initOfflineDB() {
@@ -587,7 +588,8 @@
                 
                 request.onsuccess = () => {
                     offlineDB = request.result;
-                    console.log('✅ IndexedDB inicializado');
+                    offlineDBReady = true;
+                    console.log('✅ IndexedDB inicializado e pronto');
                     resolve();
                 };
                 
@@ -663,64 +665,80 @@
         async function syncPendingPhotos() {
             if (!isOnline || !db || !user) {
                 console.log('⏳ Não é possível sincronizar agora (offline ou sem Firebase)');
-                return;
+                return false;
             }
 
             if (!offlineDB) {
                 console.warn('⚠️ IndexedDB não disponível');
-                return;
+                return false;
             }
 
-            try {
-                console.log('🔄 Iniciando sincronização de fotos pendentes...');
-                
-                const transaction = offlineDB.transaction(['photos'], 'readonly');
-                const store = transaction.objectStore('photos');
-                const index = store.index('synced');
-                const range = IDBKeyRange.only(false);
-                const request = index.getAll(range);
-                
-                request.onsuccess = async () => {
-                    const pendingPhotos = request.result;
-                    console.log(`📤 Encontrados ${pendingPhotos.length} registos pendentes`);
+            return new Promise((resolve) => {
+                try {
+                    console.log('🔄 Iniciando sincronização de fotos pendentes...');
                     
-                    for (const photo of pendingPhotos) {
-                        try {
-                            // Guardar em Firestore
-                            await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'photo_urls'), {
-                                trolleyId: String(photo.trolleyId),
-                                step: String(photo.step),
-                                filename: photo.filename,
-                                imageBase64: photo.imageBase64.split(',')[1],
-                                previewUrl: photo.imageBase64,
-                                downloadUrl: photo.imageBase64,
-                                timestamp: photo.timestamp,
-                                dataHora: photo.dataHora
-                            });
-                            
-                            // Guardar metadata
-                            await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'photos'), {
-                                trolleyId: String(photo.trolleyId),
-                                step: photo.step,
-                                data_hora: photo.dataHora,
-                                timestamp: photo.timestamp,
-                                hasImage: true
-                            });
-                            
-                            // Marcar como sincronizado
-                            const updateTx = offlineDB.transaction(['photos'], 'readwrite');
-                            const updateStore = updateTx.objectStore('photos');
-                            photo.synced = true;
-                            updateStore.put(photo);
-                            
-                            console.log(`✅ Foto sincronizada: ${photo.filename}`);
-                        } catch (error) {
-                            console.error(`❌ Erro ao sincronizar ${photo.filename}:`, error.message);
+                    const transaction = offlineDB.transaction(['photos'], 'readonly');
+                    const store = transaction.objectStore('photos');
+                    const index = store.index('synced');
+                    const range = IDBKeyRange.only(false);
+                    const request = index.getAll(range);
+                    
+                    let synced = false;
+                    
+                    request.onsuccess = async () => {
+                        const pendingPhotos = request.result;
+                        console.log(`📤 Encontrados ${pendingPhotos.length} fotos pendentes`);
+                        
+                        for (const photo of pendingPhotos) {
+                            try {
+                                // Guardar em Firestore
+                                await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'photo_urls'), {
+                                    trolleyId: String(photo.trolleyId),
+                                    step: String(photo.step),
+                                    filename: photo.filename,
+                                    imageBase64: photo.imageBase64.split(',')[1],
+                                    previewUrl: photo.imageBase64,
+                                    downloadUrl: photo.imageBase64,
+                                    timestamp: photo.timestamp,
+                                    dataHora: photo.dataHora
+                                });
+                                
+                                // Guardar metadata
+                                await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'photos'), {
+                                    trolleyId: String(photo.trolleyId),
+                                    step: photo.step,
+                                    data_hora: photo.dataHora,
+                                    timestamp: photo.timestamp,
+                                    hasImage: true
+                                });
+                                
+                                // Marcar como sincronizado
+                                const updateTx = offlineDB.transaction(['photos'], 'readwrite');
+                                const updateStore = updateTx.objectStore('photos');
+                                photo.synced = true;
+                                updateStore.put(photo);
+                                
+                                console.log(`✅ Foto sincronizada: ${photo.filename}`);
+                                synced = true;
+                            } catch (error) {
+                                console.error(`❌ Erro ao sincronizar ${photo.filename}:`, error.message);
+                            }
                         }
-                    }
+                        
+                        console.log('✨ Sincronização de fotos concluída');
+                        resolve(synced);
+                    };
                     
-                    console.log('✨ Sincronização de fotos concluída');
-                };
+                    request.onerror = () => {
+                        console.error('❌ Erro ao ler fotos pendentes:', request.error);
+                        resolve(false);
+                    };
+                } catch (error) {
+                    console.error('❌ Erro durante sincronização de fotos:', error);
+                    resolve(false);
+                }
+            });
+        }
             } catch (error) {
                 console.error('❌ Erro durante sincronização de fotos:', error);
             }
@@ -766,68 +784,88 @@
                 return false;
             }
 
-            try {
-                console.log('🔄 Iniciando sincronização de registos pendentes...');
-                
-                const transaction = offlineDB.transaction(['trolleys_pending'], 'readonly');
-                const store = transaction.objectStore('trolleys_pending');
-                const index = store.index('synced');
-                const range = IDBKeyRange.only(false);
-                const request = index.getAll(range);
-                
-                let synced = false;
-                
-                request.onsuccess = async () => {
-                    const pendingTrolleys = request.result;
-                    console.log(`📤 Encontrados ${pendingTrolleys.length} registos pendentes`);
+            return new Promise((resolve) => {
+                try {
+                    console.log('🔄 Iniciando sincronização de registos pendentes...');
                     
-                    for (const trolley of pendingTrolleys) {
-                        try {
-                            // Criar registro vazio no Firebase para o trolley
-                            await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'photos'), {
-                                trolleyId: String(trolley.trolleyId),
-                                step: 0,
-                                data_hora: trolley.createdAt ? new Date(trolley.createdAt).toLocaleString('pt-PT') : new Date().toLocaleString('pt-PT'),
-                                timestamp: trolley.createdAt || Date.now(),
-                                hasImage: false,
-                                isPlaceholder: true
-                            });
-                            
-                            // Marcar como sincronizado
-                            const updateTx = offlineDB.transaction(['trolleys_pending'], 'readwrite');
-                            const updateStore = updateTx.objectStore('trolleys_pending');
-                            trolley.synced = true;
-                            updateStore.put(trolley);
-                            
-                            console.log(`✅ Registo sincronizado: ${trolley.trolleyId}`);
-                            synced = true;
-                        } catch (error) {
-                            console.error(`❌ Erro ao sincronizar registo ${trolley.trolleyId}:`, error.message);
+                    const transaction = offlineDB.transaction(['trolleys_pending'], 'readonly');
+                    const store = transaction.objectStore('trolleys_pending');
+                    const index = store.index('synced');
+                    const range = IDBKeyRange.only(false);
+                    const request = index.getAll(range);
+                    
+                    let synced = false;
+                    
+                    request.onsuccess = async () => {
+                        const pendingTrolleys = request.result;
+                        console.log(`📤 Encontrados ${pendingTrolleys.length} registos pendentes`);
+                        
+                        for (const trolley of pendingTrolleys) {
+                            try {
+                                // Criar registro vazio no Firebase para o trolley
+                                await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'photos'), {
+                                    trolleyId: String(trolley.trolleyId),
+                                    step: 0,
+                                    data_hora: trolley.createdAt ? new Date(trolley.createdAt).toLocaleString('pt-PT') : new Date().toLocaleString('pt-PT'),
+                                    timestamp: trolley.createdAt || Date.now(),
+                                    hasImage: false,
+                                    isPlaceholder: true
+                                });
+                                
+                                // Marcar como sincronizado
+                                const updateTx = offlineDB.transaction(['trolleys_pending'], 'readwrite');
+                                const updateStore = updateTx.objectStore('trolleys_pending');
+                                trolley.synced = true;
+                                updateStore.put(trolley);
+                                
+                                console.log(`✅ Registo sincronizado: ${trolley.trolleyId}`);
+                                synced = true;
+                            } catch (error) {
+                                console.error(`❌ Erro ao sincronizar registo ${trolley.trolleyId}:`, error.message);
+                            }
                         }
-                    }
+                        
+                        console.log('✨ Sincronização de registos concluída');
+                        resolve(synced);
+                    };
                     
-                    console.log('✨ Sincronização de registos concluída');
-                };
-                
-                return synced;
-            } catch (error) {
-                console.error('❌ Erro durante sincronização de registos:', error);
-                return false;
-            }
+                    request.onerror = () => {
+                        console.error('❌ Erro ao ler registos pendentes:', request.error);
+                        resolve(false);
+                    };
+                } catch (error) {
+                    console.error('❌ Erro durante sincronização de registos:', error);
+                    resolve(false);
+                }
+            });
         }
 
         // Listener para online/offline
         window.addEventListener('online', async () => {
             isOnline = true;
             console.log('🌐 Aplicação online - Iniciando sincronização...');
-            await syncPendingTrolleys();
-            await syncPendingPhotos();
             
-            // Recarregar histórico se estiver aberto
-            const trolleysModal = document.getElementById('trolleys-modal');
-            if (trolleysModal && !trolleysModal.classList.contains('hidden')) {
-                console.log('🔄 Recarregando histórico...');
-                showTrolleysHistory();
+            try {
+                const trolleysSynced = await syncPendingTrolleys();
+                console.log(`Trolleys sincronizados: ${trolleysSynced}`);
+                
+                const photosSynced = await syncPendingPhotos();
+                console.log(`Fotos sincronizadas: ${photosSynced}`);
+                
+                // Aguardar um pouco para os dados aparecerem no Firebase
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                
+                // Recarregar histórico se estiver aberto
+                const trolleysModal = document.getElementById('trolleys-modal');
+                if (trolleysModal && !trolleysModal.classList.contains('hidden')) {
+                    console.log('🔄 Recarregando histórico...');
+                    await showTrolleysHistory();
+                    console.log('✅ Histórico recarregado');
+                } else {
+                    console.log('📴 Modal de histórico não está aberta');
+                }
+            } catch (error) {
+                console.error('❌ Erro durante sincronização online:', error);
             }
         });
 
@@ -1718,13 +1756,19 @@
             localStorage.setItem('trolley_session_archive', JSON.stringify(sessionArchive));
             
             // Guardar registo em IndexedDB se estiver offline
-            if (!isOnline) {
-                await saveTrolleyOffline({
+            if (!isOnline && offlineDBReady) {
+                const saved = await saveTrolleyOffline({
                     trolleyId: trolleyId,
                     createdAt: Date.now(),
                     dataRegisto: dataRegisto
                 });
-                console.log(`📴 Registo guardado offline: ${trolleyId}`);
+                if (saved) {
+                    console.log(`📴 Registo guardado offline: ${trolleyId}`);
+                } else {
+                    console.warn(`⚠️ Erro ao guardar registo offline: ${trolleyId}`);
+                }
+            } else if (!isOnline) {
+                console.warn('⚠️ IndexedDB ainda não está pronto - registo será guardado apenas em localStorage');
             }
             
             // Inicializar contador de fotos a 0
