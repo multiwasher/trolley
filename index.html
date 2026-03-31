@@ -258,11 +258,17 @@
                 </div>
                 <span id="display-trolley-id" class="text-xl font-black text-slate-800 uppercase">---</span>
             </div>
-            <div id="sync-status" class="hidden">
-                <span class="flex h-2 w-2 relative">
-                    <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
-                    <span class="relative inline-flex rounded-full h-2 w-2 bg-blue-500"></span>
-                </span>
+            <div class="flex items-center gap-3">
+                <div id="sync-status" class="hidden">
+                    <span class="flex h-2 w-2 relative">
+                        <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
+                        <span class="relative inline-flex rounded-full h-2 w-2 bg-blue-500"></span>
+                    </span>
+                </div>
+                <button id="btn-exit-trolley" class="bg-red-100 hover:bg-red-200 text-red-700 font-bold py-2 px-4 rounded-lg text-sm transition-all flex items-center gap-2" title="Voltar ao ecrã inicial">
+                    <span>🔙</span>
+                    <span>Sair</span>
+                </button>
             </div>
         </div>
 
@@ -284,13 +290,33 @@
             </div>
         </div>
 
-        <!-- Passo Atual -->
-        <div id="step-content" class="bg-white step-card rounded-[2.5rem] shadow-xl border border-white/10 p-6 space-y-6">
+        <!-- Grid de Passo como Cards -->
+        <div id="steps-grid" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <!-- Os cards de passos serão renderizados aqui -->
+        </div>
+
+        <!-- Passo Atual (Hidden até clicar num card) -->
+        <div id="step-content" class="hidden bg-white step-card rounded-[2.5rem] shadow-xl border border-white/10 p-6 space-y-6">
             <div class="flex justify-between items-center">
-                <div class="bg-blue-50 px-4 py-1 rounded-full">
-                    <span id="step-number" class="text-blue-600 font-black text-[10px] uppercase tracking-widest leading-none">Passo 1 de 5</span>
+                <div class="flex items-center gap-2">
+                    <button id="btn-back-to-grid" class="text-2xl text-slate-400 hover:text-slate-800 transition-all">←</button>
+                    <div class="bg-blue-50 px-4 py-1 rounded-full">
+                        <span id="step-number" class="text-blue-600 font-black text-[10px] uppercase tracking-widest leading-none">Passo 1 de 5</span>
+                    </div>
                 </div>
                 <span id="step-icon" class="text-3xl">🛒</span>
+            </div>
+
+            <!-- Status do Progresso -->
+            <div id="step-progress" class="bg-gradient-to-r from-blue-50 to-emerald-50 rounded-2xl p-4 border border-blue-100">
+                <div class="flex items-center justify-between mb-2">
+                    <span class="text-sm font-black text-slate-800">Progresso do Passo</span>
+                    <span id="progress-status" class="text-sm font-black text-blue-600">0/1 fotos</span>
+                </div>
+                <div class="w-full bg-slate-200 rounded-full h-2 overflow-hidden">
+                    <div id="progress-bar" class="bg-gradient-to-r from-blue-500 to-emerald-500 h-full rounded-full transition-all duration-300" style="width: 0%"></div>
+                </div>
+                <p id="progress-message" class="text-xs text-slate-600 font-bold mt-2">Precisa de mais fotos para continuar</p>
             </div>
 
             <div class="flex gap-4 items-start">
@@ -324,8 +350,11 @@
         </div>
 
         <!-- Galeria -->
-        <div class="bg-white rounded-[2rem] p-6 shadow-sm border border-white/10 text-slate-800">
-            <h3 class="text-[10px] font-black text-slate-300 uppercase tracking-[0.2em] mb-4">Galeria do Passo</h3>
+        <div id="gallery-container" class="hidden bg-white rounded-[2rem] p-6 shadow-sm border border-white/10 text-slate-800">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-[10px] font-black text-slate-300 uppercase tracking-[0.2em]">Galeria do Passo</h3>
+                <span id="gallery-counter" class="bg-blue-100 text-blue-700 font-black text-sm px-3 py-1 rounded-full">0 fotos</span>
+            </div>
             <div id="preview-list" class="grid grid-cols-3 gap-3"></div>
             <div id="empty-state" class="py-10 text-center">
                 <div class="text-slate-200 text-4xl mb-2">📸</div>
@@ -336,14 +365,10 @@
 
 
 
-    <!-- Rodapé -->
-    <footer id="footer-nav" class="hidden fixed bottom-6 left-6 right-6 z-40 flex gap-4">
-        <button id="btn-prev-step" class="w-16 h-16 bg-white/90 backdrop-blur-md text-slate-400 rounded-2xl shadow-xl flex items-center justify-center border border-white/10 disabled:opacity-30">
+    <!-- Rodapé - Botão de Retorno ao Grid -->
+    <footer id="footer-nav" class="hidden fixed bottom-6 left-6 right-6 z-40">
+        <button id="btn-prev-step" class="w-16 h-16 bg-white/90 backdrop-blur-md text-slate-400 rounded-2xl shadow-xl flex items-center justify-center border border-white/10 disabled:opacity-30 transition-all" title="Voltar ao grid">
             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M15 19l-7-7 7-7"></path></svg>
-        </button>
-        <button id="btn-next-step" class="flex-grow bg-emerald-600 text-white font-black rounded-2xl shadow-xl flex items-center justify-center gap-3 disabled:bg-slate-300 transition-all">
-            <span id="btn-next-text" class="text-lg">Próximo Passo</span>
-            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M9 5l7 7-7 7"></path></svg>
         </button>
     </footer>
 
@@ -384,6 +409,13 @@
                     <button id="btn-close-trolleys-modal" class="text-2xl text-slate-400 hover:text-slate-800">✕</button>
                 </div>
             </div>
+            
+            <!-- Barra de Pesquisa -->
+            <div class="mb-4 flex items-center gap-2 bg-slate-100 rounded-2xl px-4 py-2 border border-slate-200">
+                <span class="text-xl">🔍</span>
+                <input type="text" id="trolley-search-input" placeholder="Pesquisar por ID do registo..." class="flex-grow bg-transparent outline-none text-slate-700 placeholder:text-slate-400 font-medium">
+            </div>
+            
             <div id="trolleys-list" class="flex-grow overflow-y-auto grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4"></div>
         </div>
     </div>
@@ -484,6 +516,7 @@
         let db, auth, user = null;
         let currentStep = 1;
         let trolleyId = "";
+        let isViewingStep = false;  // Flag para controlar se está vendo um passo específico
         
         let sessionArchive = JSON.parse(localStorage.getItem('trolley_session_archive') || '{}');
         const currentPhotos = { 1: [], 2: [], 3: [], 4: [], 5: [] };
@@ -574,6 +607,25 @@
             }
         });
 
+        // Botão de sair (voltar ao ecrã inicial)
+        document.getElementById('btn-exit-trolley').addEventListener('click', () => {
+            trolleyId = "";
+            currentStep = 1;
+            currentPhotos[1] = [];
+            currentPhotos[2] = [];
+            currentPhotos[3] = [];
+            currentPhotos[4] = [];
+            currentPhotos[5] = [];
+            
+            document.getElementById('trolley-id-input').value = "";
+            document.getElementById('app-container').classList.add('hidden');
+            document.getElementById('footer-nav').classList.add('hidden');
+            document.getElementById('setup-screen').classList.remove('hidden');
+            document.querySelector('.tabs-nav').classList.add('hidden');
+            
+            console.log('🔙 Saiu da inspeção - Voltou ao ecrã inicial');
+        });
+
         // Função para mostrar histórico de trolleys
         async function showTrolleysHistory() {
             try {
@@ -596,32 +648,138 @@
                         const data = d.data();
                         const tid = data.trolleyId || 'Desconhecido';
                         if (!trolleysList[tid]) {
-                            trolleysList[tid] = { count: 0, lastDate: '' };
+                            trolleysList[tid] = { count: 0, lastDate: '', timestamp: 0 };
                         }
                         trolleysList[tid].count++;
                         trolleysList[tid].lastDate = data.data_hora || new Date(data.timestamp).toLocaleString('pt-PT');
+                        // Manter timestamp para ordenação
+                        trolleysList[tid].timestamp = Math.max(trolleysList[tid].timestamp, data.timestamp || 0);
                     });
                 }
                 
                 // Renderizar lista de trolleys
                 const trolleysListContainer = document.getElementById('trolleys-list');
-                const trolleyIds = Object.keys(trolleysList);
+                let trolleyIds = Object.keys(trolleysList);
+                
+                // Ordenar por data mais recente (descendente)
+                trolleyIds.sort((a, b) => {
+                    const dateA = trolleysList[a].timestamp || 0;
+                    const dateB = trolleysList[b].timestamp || 0;
+                    return dateB - dateA;  // Descendente (mais recentes primeiro)
+                });
+                
+                console.log(`📊 Trolleys carregados: ${trolleyIds.length}`, trolleysList);
+                
+                if (trolleyIds.length === 0) {
+                    // Para desenvolvimento/teste: adicionar dado fake
+                    trolleysList['TEST-001'] = { count: 3, lastDate: new Date().toLocaleString('pt-PT') };
+                    trolleyIds.push('TEST-001');
+                    console.log('⚠️ Nenhum registo real - usando dado de teste');
+                }
                 
                 if (trolleyIds.length === 0) {
                     trolleysListContainer.innerHTML = '<div class="text-center py-10 text-slate-400">Nenhum registo encontrado</div>';
                     document.getElementById('btn-select-all-trolleys').classList.add('hidden');
                     document.getElementById('btn-download-selected').classList.add('hidden');
                 } else {
-                    trolleysListContainer.innerHTML = trolleyIds.map(tid => `
-                        <div class="p-4 bg-slate-50 rounded-xl border border-slate-200 hover:border-blue-400 hover:shadow-lg transition-all group trolley-item relative flex flex-col items-center text-center" data-trolley="${tid}">
-                            <input type="checkbox" class="trolley-checkbox absolute top-3 right-3 w-5 h-5 cursor-pointer" data-trolley="${tid}">
-                            <p class="font-black text-slate-800 uppercase text-xl mb-2 flex-grow flex items-center justify-center" style="cursor: pointer;">${tid}</p>
-                            <p class="text-xs text-slate-500 mb-3 line-clamp-1">${trolleysList[tid].lastDate}</p>
-                            <div class="bg-blue-100 text-blue-600 font-black px-3 py-2 rounded-lg w-full" style="cursor: pointer;">
-                                ${trolleysList[tid].count} registo${trolleysList[tid].count !== 1 ? 's' : ''}
+                    // Agrupar trolleys por mês/ano
+                    const now = new Date();
+                    const currentMonth = now.getMonth();
+                    const currentYear = now.getFullYear();
+                    
+                    const groupedByMonth = {};
+                    const currentMonthTrolleys = [];
+                    
+                    trolleyIds.forEach(tid => {
+                        const date = new Date(trolleysList[tid].timestamp);
+                        const month = date.getMonth();
+                        const year = date.getFullYear();
+                        
+                        // Se é o mês actual, adicionar à lista de mês atual
+                        if (month === currentMonth && year === currentYear) {
+                            currentMonthTrolleys.push(tid);
+                        } else {
+                            // Caso contrário, agrupar por mês/ano
+                            const monthKey = `${date.toLocaleString('pt-PT', { month: 'long' })} ${year}`;
+                            if (!groupedByMonth[monthKey]) {
+                                groupedByMonth[monthKey] = [];
+                            }
+                            groupedByMonth[monthKey].push(tid);
+                        }
+                    });
+                    
+                    // Renderizar registos do mês actual (individualizados)
+                    let html = '';
+                    
+                    if (currentMonthTrolleys.length > 0) {
+                        html += '<div class="col-span-full mb-4"><h3 class="text-sm font-black text-slate-600 uppercase tracking-wide mb-3">📅 Mês Atual</h3></div>';
+                        html += currentMonthTrolleys.map(tid => `
+                            <div class="p-4 bg-slate-50 rounded-xl border border-slate-200 hover:border-blue-400 hover:shadow-lg transition-all group trolley-item relative flex flex-col items-center text-center" data-trolley="${tid}">
+                                <div class="absolute top-3 right-3 flex gap-2">
+                                    <input type="checkbox" class="trolley-checkbox w-5 h-5 cursor-pointer" data-trolley="${tid}">
+                                </div>
+                                <p class="font-black text-slate-800 uppercase text-xl mb-2 flex-grow flex items-center justify-center">${tid}</p>
+                                <p class="text-xs text-slate-500 mb-3 line-clamp-1">${trolleysList[tid].lastDate}</p>
+                                <button class="btn-show-photos w-full bg-blue-100 text-blue-600 font-black px-3 py-2 rounded-lg mb-3 transition-all hover:bg-blue-200" data-trolley="${tid}">
+                                    ${trolleysList[tid].count} registo${trolleysList[tid].count !== 1 ? 's' : ''}
+                                </button>
+                                <div class="flex gap-2 w-full">
+                                    <button class="btn-edit-trolley flex-grow bg-amber-100 hover:bg-amber-200 text-amber-700 font-bold py-2 rounded-lg text-sm transition-all flex items-center justify-center gap-1" data-trolley="${tid}">
+                                        <span>✏️</span>
+                                        <span>Editar</span>
+                                    </button>
+                                    <button class="btn-download-trolley flex-grow bg-emerald-100 hover:bg-emerald-200 text-emerald-700 font-bold py-2 rounded-lg text-sm transition-all flex items-center justify-center gap-1" data-trolley="${tid}">
+                                        <span>⬇️</span>
+                                        <span>Download</span>
+                                    </button>
+                                </div>
                             </div>
-                        </div>
-                    `).join('');
+                        `).join('');
+                    }
+                    
+                    // Renderizar mêses anteriores em pastas colapsáveis
+                    Object.keys(groupedByMonth).sort().reverse().forEach(monthKey => {
+                        const monthTrolleys = groupedByMonth[monthKey];
+                        const monthId = monthKey.replace(/\s+/g, '-');
+                        
+                        html += `
+                            <div class="col-span-full mb-4">
+                                <button class="toggle-month w-full text-left flex items-center gap-2 font-black text-slate-600 uppercase tracking-wide text-sm py-2 px-3 bg-slate-100 rounded-lg hover:bg-slate-200 transition-all" data-month="${monthId}">
+                                    <span class="toggle-icon">▼</span>
+                                    <span>📁 ${monthKey}</span>
+                                    <span class="text-xs text-slate-500 ml-auto">${monthTrolleys.length} registo${monthTrolleys.length !== 1 ? 's' : ''}</span>
+                                </button>
+                            </div>
+                            <div class="col-span-full hidden month-content" id="${monthId}">
+                                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 pl-6">
+                                    ${monthTrolleys.map(tid => `
+                                        <div class="p-4 bg-slate-50 rounded-xl border border-slate-200 hover:border-blue-400 hover:shadow-lg transition-all group trolley-item relative flex flex-col items-center text-center" data-trolley="${tid}">
+                                            <div class="absolute top-3 right-3 flex gap-2">
+                                                <input type="checkbox" class="trolley-checkbox w-5 h-5 cursor-pointer" data-trolley="${tid}">
+                                            </div>
+                                            <p class="font-black text-slate-800 uppercase text-xl mb-2 flex-grow flex items-center justify-center">${tid}</p>
+                                            <p class="text-xs text-slate-500 mb-3 line-clamp-1">${trolleysList[tid].lastDate}</p>
+                                            <button class="btn-show-photos w-full bg-blue-100 text-blue-600 font-black px-3 py-2 rounded-lg mb-3 transition-all hover:bg-blue-200" data-trolley="${tid}">
+                                                ${trolleysList[tid].count} registo${trolleysList[tid].count !== 1 ? 's' : ''}
+                                            </button>
+                                            <div class="flex gap-2 w-full">
+                                                <button class="btn-edit-trolley flex-grow bg-amber-100 hover:bg-amber-200 text-amber-700 font-bold py-2 rounded-lg text-sm transition-all flex items-center justify-center gap-1" data-trolley="${tid}">
+                                                    <span>✏️</span>
+                                                    <span>Editar</span>
+                                                </button>
+                                                <button class="btn-download-trolley flex-grow bg-emerald-100 hover:bg-emerald-200 text-emerald-700 font-bold py-2 rounded-lg text-sm transition-all flex items-center justify-center gap-1" data-trolley="${tid}">
+                                                    <span>⬇️</span>
+                                                    <span>Download</span>
+                                                </button>
+                                            </div>
+                                        </div>
+                                    `).join('')}
+                                </div>
+                            </div>
+                        `;
+                    });
+                    
+                    trolleysListContainer.innerHTML = html;
                     
                     // Mostrar botões de seleção
                     document.getElementById('btn-select-all-trolleys').classList.remove('hidden');
@@ -629,6 +787,18 @@
                     
                     // Rastrear seleções
                     let selectedTrolleys = new Set();
+                    
+                    // Event listeners para toggle de meses
+                    document.querySelectorAll('.toggle-month').forEach(btn => {
+                        btn.addEventListener('click', (e) => {
+                            const monthId = btn.getAttribute('data-month');
+                            const content = document.getElementById(monthId);
+                            const icon = btn.querySelector('.toggle-icon');
+                            
+                            content.classList.toggle('hidden');
+                            icon.textContent = content.classList.contains('hidden') ? '▼' : '▲';
+                        });
+                    });
                     
                     // Adicionar event listeners aos checkboxes
                     document.querySelectorAll('.trolley-checkbox').forEach(checkbox => {
@@ -643,16 +813,37 @@
                         });
                     });
                     
-                    // Adicionar event listeners aos items (para abrir fotos)
-                    document.querySelectorAll('.trolley-item').forEach(item => {
-                        item.addEventListener('click', (e) => {
-                            // Não abrir modal se clicou no checkbox
-                            if (e.target.classList.contains('trolley-checkbox')) return;
-                            
-                            const tid = item.getAttribute('data-trolley');
-                            showTrolleyPhotos(tid);
+                    // Event listeners para botão contador (mostrar fotos)
+                    document.querySelectorAll('.btn-show-photos').forEach(btn => {
+                        btn.addEventListener('click', async (e) => {
+                            e.stopPropagation();
+                            const tid = btn.getAttribute('data-trolley');
+                            console.log(`📸 Botão Ver Fotos clicado para: ${tid}`);
+                            await showTrolleyPhotos(tid);
                         });
                     });
+
+                    // Event listeners para botões "Editar"
+                    document.querySelectorAll('.btn-edit-trolley').forEach(btn => {
+                        btn.addEventListener('click', async (e) => {
+                            e.stopPropagation();
+                            const tid = btn.getAttribute('data-trolley');
+                            console.log(`🖊️ Botão Editar clicado para: ${tid}`);
+                            await editTrolley(tid);
+                        });
+                    });
+
+                    // Event listeners para botões "Download"
+                    document.querySelectorAll('.btn-download-trolley').forEach(btn => {
+                        btn.addEventListener('click', async (e) => {
+                            e.stopPropagation();
+                            const tid = btn.getAttribute('data-trolley');
+                            console.log(`⬇️ Botão Download clicado para: ${tid}`);
+                            await downloadTrolleyPhotos(tid);
+                        });
+                    });
+                    
+                    console.log(`✅ Event listeners adicionados para ${document.querySelectorAll('.btn-edit-trolley').length} botões Editar e ${document.querySelectorAll('.btn-download-trolley').length} botões Download`);
                     
                     // Função para atualizar contador do botão
                     function updateDownloadButtonCount() {
@@ -693,6 +884,41 @@
                     // Passar selectedTrolleys para função de download
                     window.selectedTrolleys = selectedTrolleys;
                     window.trolleysList = trolleysList;
+                    
+                    // Adicionar event listener para barra de pesquisa
+                    const searchInput = document.getElementById('trolley-search-input');
+                    searchInput.addEventListener('input', (e) => {
+                        const searchTerm = e.target.value.toLowerCase();
+                        const items = document.querySelectorAll('.trolley-item');
+                        let visibleCount = 0;
+                        
+                        items.forEach(item => {
+                            const trolleyName = item.getAttribute('data-trolley').toLowerCase();
+                            if (trolleyName.includes(searchTerm)) {
+                                item.style.display = '';
+                                visibleCount++;
+                            } else {
+                                item.style.display = 'none';
+                            }
+                        });
+                        
+                        // Mostrar mensagem se nenhum resultado
+                        if (visibleCount === 0 && searchTerm !== '') {
+                            if (!document.getElementById('no-results-message')) {
+                                const msg = document.createElement('div');
+                                msg.id = 'no-results-message';
+                                msg.className = 'col-span-full text-center py-10 text-slate-400';
+                                msg.textContent = '❌ Nenhum registo encontrado';
+                                trolleysListContainer.appendChild(msg);
+                            }
+                        } else {
+                            const noResultsMsg = document.getElementById('no-results-message');
+                            if (noResultsMsg) noResultsMsg.remove();
+                        }
+                    });
+                    
+                    // Limpar barra de pesquisa quando abre modal
+                    searchInput.value = '';
                 }
                 
                 // Mostrar modal
@@ -918,6 +1144,158 @@
             }
         }
 
+        // Função para editar um trolley (adicionar mais fotos)
+        async function editTrolley(id) {
+            try {
+                console.log(`🖊️ editTrolley chamado com ID: ${id}`);
+                // Atualizar a variável module-level
+                trolleyId = id;
+                
+                // Carregar fotos existentes do trolley
+                currentPhotos[1] = [];
+                currentPhotos[2] = [];
+                currentPhotos[3] = [];
+                currentPhotos[4] = [];
+                currentPhotos[5] = [];
+                
+                if (db) {
+                    try {
+                        const photosRef = collection(db, 'artifacts', appId, 'public', 'data', 'photo_urls');
+                        const photosSnapshot = await getDocs(photosRef);
+                        
+                        photosSnapshot.docs.forEach((d) => {
+                            const data = d.data();
+                            if (String(data.trolleyId) === String(id)) {
+                                const step = data.step || 1;
+                                let base64 = data.imagemBase64 || null;
+                                
+                                if (!base64 && data.downloadUrl && data.downloadUrl.startsWith('data:image')) {
+                                    base64 = data.downloadUrl.split(',')[1];
+                                }
+                                
+                                if (base64) {
+                                    currentPhotos[step].push(`data:image/jpeg;base64,${base64}`);
+                                }
+                            }
+                        });
+                    } catch (e) {
+                        console.warn(`⚠️ Erro ao carregar fotos do trolley ${id}:`, e.message);
+                    }
+                }
+                
+                // Abrir a app para edição
+                currentStep = 1;
+                isViewingStep = false;
+                
+                document.getElementById('trolleys-modal').classList.add('hidden');
+                document.getElementById('trolley-photos-modal').classList.add('hidden');
+                document.getElementById('app-container').classList.remove('hidden');
+                document.getElementById('footer-nav').classList.remove('hidden');
+                document.getElementById('setup-screen').classList.add('hidden');
+                document.getElementById('display-trolley-id').innerText = id.toUpperCase();
+                
+                // Renderizar grid de passos
+                renderStepsGrid();
+                
+                console.log(`✏️ Editando trolley: ${id}`);
+            } catch (error) {
+                console.error('Erro ao abrir trolley para edição:', error);
+                alert('Erro ao abrir registo para edição. Tente novamente.');
+            }
+        }
+
+        // Função para fazer download de um único trolley
+        async function downloadTrolleyPhotos(trolleyId) {
+            try {
+                console.log(`📦 downloadTrolleyPhotos chamado com ID: ${trolleyId}`);
+                window.showLoading();
+                console.log(`📦 Iniciando download do trolley ${trolleyId}...`);
+                
+                const photosList = [];
+                
+                if (db) {
+                    try {
+                        const urlsRef = collection(db, 'artifacts', appId, 'public', 'data', 'photo_urls');
+                        const urlsSnapshot = await getDocs(urlsRef);
+                        
+                        urlsSnapshot.docs.forEach((d) => {
+                            const data = d.data();
+                            
+                            if (String(data.trolleyId) === String(trolleyId)) {
+                                let previewUrl = data.previewUrl || null;
+                                let downloadUrl = data.downloadUrl || null;
+                                
+                                if (data.imagemBase64 && !previewUrl) {
+                                    previewUrl = `data:image/jpeg;base64,${data.imagemBase64}`;
+                                    downloadUrl = `data:image/jpeg;base64,${data.imagemBase64}`;
+                                }
+                                
+                                photosList.push({
+                                    step: data.step,
+                                    stepTitle: steps[data.step]?.title || `Passo ${data.step}`,
+                                    timestamp: data.dataHora || new Date(data.timestamp).toLocaleString('pt-PT'),
+                                    previewUrl: previewUrl,
+                                    downloadUrl: downloadUrl,
+                                    filename: data.filename || `Trolley_${trolleyId}_P${data.step}_${Date.now()}.jpg`
+                                });
+                            }
+                        });
+                    } catch (e) {
+                        console.warn(`⚠️ Erro a carregar fotos do trolley ${trolleyId}:`, e.message);
+                    }
+                }
+                
+                if (photosList.length === 0) {
+                    alert('Nenhuma foto encontrada para este trolley');
+                    window.hideLoading();
+                    return;
+                }
+                
+                // Criar ZIP com as fotos
+                const zip = new JSZip();
+                const trolleyFolder = zip.folder(trolleyId);
+                let totalPhotos = 0;
+                
+                for (const photo of photosList) {
+                    try {
+                        if (photo.downloadUrl.startsWith('data:image')) {
+                            const base64Data = photo.downloadUrl.split(',')[1];
+                            trolleyFolder.file(photo.filename, base64Data, { base64: true });
+                            totalPhotos++;
+                        } else {
+                            const response = await fetch(photo.downloadUrl);
+                            const blob = await response.blob();
+                            trolleyFolder.file(photo.filename, blob);
+                            totalPhotos++;
+                        }
+                    } catch (e) {
+                        console.warn(`⚠️ Erro ao adicionar foto ${photo.filename}:`, e.message);
+                    }
+                }
+                
+                // Gerar ZIP e fazer download
+                const zipBlob = await zip.generateAsync({ type: 'blob' });
+                const url = URL.createObjectURL(zipBlob);
+                const timestamp = new Date().toLocaleString('pt-PT').replace(/[\/\s:]/g, '-');
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `TrolleyCheck_${trolleyId}_${totalPhotos}fotos_${timestamp}.zip`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                
+                console.log(`✅ Download concluído: ${totalPhotos} foto(s)`);
+                window.hideLoading();
+                alert(`✅ Download concluído: ${totalPhotos} foto(s)`);
+                
+            } catch (error) {
+                console.error('❌ Erro ao fazer download:', error);
+                alert('Erro ao fazer download. Tente novamente.');
+                window.hideLoading();
+            }
+        }
+
         // Função para fazer download de múltiplos trolleys
         async function downloadSelectedTrolleyPhotos(selectedTrolleys) {
             if (selectedTrolleys.size === 0) {
@@ -1080,6 +1458,8 @@
         });
 
         async function savePhoto(dataUrl) {
+            console.log(`💾 savePhoto() - Guardando foto para passo ${currentStep}`);
+            
             const photoIndex = currentPhotos[currentStep].length + 1;
             const dataHora = new Date().toLocaleString('pt-PT');
             const filename = `Trolley_${trolleyId}_P${currentStep}_${Date.now()}.jpg`;
@@ -1098,6 +1478,7 @@
             
             // Guardar a imagem em memória para renderização
             currentPhotos[currentStep].push(dataUrl);
+            console.log(`✅ Foto adicionada - Total no passo: ${currentPhotos[currentStep].length}`);
             
             // Guardar metadados no localStorage
             try {
@@ -1110,6 +1491,14 @@
             
             showPhotoNotification(currentStep);
             updateUI();
+            
+            // Scroll automático para a galeria
+            setTimeout(() => {
+                const galleryContainer = document.getElementById('gallery-container');
+                if (galleryContainer && isViewingStep) {
+                    galleryContainer.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                }
+            }, 100);
             
             const syncIcon = document.getElementById('sync-status');
             syncIcon.classList.remove('hidden');
@@ -1132,8 +1521,6 @@
                         dataHora: dataHora
                     });
                     
-                    console.log(`✅ Imagem guardada em Firestore para ${trolleyId} Passo ${currentStep}`);
-                    
                     // Guardar metadata
                     await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'photos'), {
                         trolleyId: String(trolleyId),
@@ -1143,14 +1530,46 @@
                         hasImage: true
                     });
                     
-                    console.log(`✅ Metadados guardados`);
+                    console.log(`✅ Imagem e metadados guardados com sucesso`);
+                    
+                    // Mostrar notificação de sincronização
+                    showSyncNotification(true);
                     
                 } catch (error) {
                     console.error(`❌ Erro ao guardar: ${error.message}`);
+                    showSyncNotification(false);
                 } finally {
                     setTimeout(() => syncIcon.classList.add('hidden'), 1500);
                 }
+            } else {
+                // Se não tem Firebase, mostrar que foi salvo localmente
+                setTimeout(() => syncIcon.classList.add('hidden'), 1500);
             }
+        }
+        
+        // Função para mostrar notificação de sincronização
+        function showSyncNotification(success) {
+            const container = document.getElementById('photo-toast-container');
+            const toast = document.createElement('div');
+            
+            toast.className = 'sync-toast flex items-center gap-2 bg-white shadow-lg rounded-2xl px-5 py-3 text-slate-800 border-2 pointer-events-auto text-sm font-bold';
+            
+            if (success) {
+                toast.classList.add('border-emerald-400', 'text-emerald-700');
+                toast.innerHTML = '☁️ Sincronizado com sucesso';
+            } else {
+                toast.classList.add('border-amber-400', 'text-amber-700');
+                toast.innerHTML = '⚠️ Erro ao sincronizar (salvo localmente)';
+            }
+            
+            container.appendChild(toast);
+            
+            // Remover após 3 segundos
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                toast.style.transition = 'opacity 0.3s ease-out';
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
         }
 
         // Função para mostrar notificação de foto capturada
@@ -1161,53 +1580,78 @@
             
             const container = document.getElementById('photo-toast-container');
             const toast = document.createElement('div');
-            toast.className = 'photo-toast flex items-center gap-3 bg-white shadow-2xl rounded-2xl px-6 py-4 text-slate-800 border-2 border-emerald-400 pointer-events-auto';
             
-            const checkIcon = document.createElement('div');
-            checkIcon.className = 'icon-check flex-shrink-0 flex items-center justify-center w-8 h-8 bg-emerald-100 rounded-full';
+            // Melhor styling - mais visível e claro
+            toast.className = 'photo-toast flex flex-col items-center gap-2 bg-white shadow-2xl rounded-3xl px-8 py-6 text-slate-800 border-2 pointer-events-auto animate-pulse';
             
             if (isComplete) {
-                checkIcon.innerHTML = '✓';
-                checkIcon.className += ' text-emerald-600';
+                toast.classList.add('border-emerald-400', 'bg-emerald-50');
             } else {
-                checkIcon.innerHTML = `${currentPhotosCount}/${minPhotos}`;
-                checkIcon.className = 'icon-check flex-shrink-0 flex items-center justify-center w-8 h-8 bg-blue-100 text-blue-600 rounded-full text-sm font-black';
+                toast.classList.add('border-blue-400');
+            }
+            
+            // Ícone de status com destaque
+            const statusDiv = document.createElement('div');
+            statusDiv.className = 'flex items-center gap-3 w-full';
+            
+            const icon = document.createElement('div');
+            icon.className = 'flex-shrink-0 flex items-center justify-center w-12 h-12 rounded-full text-xl font-black';
+            
+            if (isComplete) {
+                icon.className += ' bg-emerald-100 text-emerald-600';
+                icon.innerHTML = '✓';
+            } else {
+                icon.className += ' bg-blue-100 text-blue-600';
+                icon.innerHTML = `${currentPhotosCount}/${minPhotos}`;
             }
             
             const textDiv = document.createElement('div');
-            textDiv.className = 'flex flex-col gap-0.5';
+            textDiv.className = 'flex flex-col gap-1';
             
             const title = document.createElement('p');
-            title.className = 'font-black text-sm leading-snug';
-            title.textContent = '📸 Foto Capturada!';
-            
-            const count = document.createElement('p');
-            count.className = 'text-xs text-slate-500 font-bold';
+            title.className = 'font-black text-base leading-snug';
             
             if (isComplete) {
-                count.textContent = `${steps[step].title} completo! ✓ (${currentPhotosCount}/${minPhotos})`;
+                title.textContent = '✅ Etapa Completada!';
             } else {
-                count.textContent = `${currentPhotosCount} de ${minPhotos} - ${steps[step].title}`;
+                title.textContent = '📸 Foto Gravada!';
             }
             
-            textDiv.appendChild(title);
-            textDiv.appendChild(count);
+            const info = document.createElement('p');
+            info.className = 'text-xs text-slate-500 font-bold';
             
-            toast.appendChild(checkIcon);
-            toast.appendChild(textDiv);
+            if (isComplete) {
+                info.textContent = `${steps[step].title} está completo! Pode continuar.`;
+            } else {
+                info.textContent = `${currentPhotosCount} de ${minPhotos} fotos - Precisa de ${minPhotos - currentPhotosCount} mais`;
+            }
+            
+            statusDiv.appendChild(icon);
+            textDiv.appendChild(title);
+            textDiv.appendChild(info);
+            statusDiv.appendChild(textDiv);
+            
+            toast.appendChild(statusDiv);
             container.appendChild(toast);
             
-            // Remover a notificação após 3 segundos
+            // Remover a notificação após 5 segundos
             setTimeout(() => {
-                toast.classList.add('hide');
-                setTimeout(() => toast.remove(), 400);
-            }, 3000);
+                toast.style.opacity = '0';
+                toast.style.transition = 'opacity 0.3s ease-out';
+                setTimeout(() => toast.remove(), 300);
+            }, 5000);
         }
 
 
 
         function updateUI() {
             const photosOfStep = currentPhotos[currentStep];
+            const minPhotos = steps[currentStep].min;
+            const isComplete = photosOfStep.length >= minPhotos;
+            
+            console.log(`📸 updateUI() - Passo ${currentStep}: ${photosOfStep.length}/${minPhotos} fotos`);
+            
+            // Atualizar galeria
             document.getElementById('preview-list').innerHTML = photosOfStep.map((src, i) => `
                 <div class="relative group">
                     <img src="${src}" class="w-full h-24 object-cover rounded-xl border-2 border-white">
@@ -1215,23 +1659,131 @@
                 </div>
             `).join('');
             document.getElementById('empty-state').classList.toggle('hidden', photosOfStep.length > 0);
-            document.getElementById('btn-next-step').disabled = photosOfStep.length < steps[currentStep].min;
+            
+            // Atualizar contador da galeria
+            const counterEl = document.getElementById('gallery-counter');
+            if (counterEl) {
+                const counterText = `${photosOfStep.length} foto${photosOfStep.length !== 1 ? 's' : ''}`;
+                counterEl.textContent = counterText;
+                if (isComplete) {
+                    counterEl.classList.remove('bg-blue-100', 'text-blue-700');
+                    counterEl.classList.add('bg-emerald-100', 'text-emerald-700');
+                } else {
+                    counterEl.classList.remove('bg-emerald-100', 'text-emerald-700');
+                    counterEl.classList.add('bg-blue-100', 'text-blue-700');
+                }
+            }
+            
+            // Atualizar progress bar (se estiver no view de step)
+            if (isViewingStep) {
+                const percentage = Math.min((photosOfStep.length / minPhotos) * 100, 100);
+                document.getElementById('progress-bar').style.width = percentage + '%';
+                
+                const statusEl = document.getElementById('progress-status');
+                statusEl.textContent = `${photosOfStep.length}/${minPhotos} foto${photosOfStep.length !== 1 ? 's' : ''}`;
+                
+                if (isComplete) {
+                    statusEl.classList.add('text-emerald-600');
+                    statusEl.classList.remove('text-blue-600');
+                    document.getElementById('progress-message').textContent = '✅ Etapa completa! Pode continuar para o próximo passo.';
+                    document.getElementById('progress-message').classList.remove('text-slate-600');
+                    document.getElementById('progress-message').classList.add('text-emerald-600', 'font-black');
+                    document.getElementById('step-progress').classList.remove('from-blue-50', 'border-blue-100');
+                    document.getElementById('step-progress').classList.add('from-emerald-50', 'border-emerald-100');
+                } else {
+                    statusEl.classList.remove('text-emerald-600');
+                    statusEl.classList.add('text-blue-600');
+                    const remaining = minPhotos - photosOfStep.length;
+                    document.getElementById('progress-message').textContent = `Precisa de ${remaining} mais foto${remaining !== 1 ? 's' : ''} para completar`;
+                    document.getElementById('progress-message').classList.add('text-slate-600');
+                    document.getElementById('progress-message').classList.remove('text-emerald-600', 'font-black');
+                    document.getElementById('step-progress').classList.add('from-blue-50', 'border-blue-100');
+                    document.getElementById('step-progress').classList.remove('from-emerald-50', 'border-emerald-100');
+                }
+            }
             
             // Atualizar contador total de fotos
             const totalFotos = Object.values(currentPhotos).reduce((sum, arr) => sum + arr.length, 0);
             document.getElementById('display-total-photos').innerText = totalFotos;
+            
+            // Se está vendo o grid, renderizar novamente (para mostrar vistos)
+            if (!isViewingStep) {
+                renderStepsGrid();
+            }
         }
 
         window.removePhoto = (i) => { currentPhotos[currentStep].splice(i, 1); updateUI(); };
 
-        function renderStep() {
+        function renderStepsGrid() {
+            const grid = document.getElementById('steps-grid');
+            grid.innerHTML = Object.entries(steps).map(([stepNum, step]) => {
+                const photoCount = currentPhotos[stepNum].length;
+                const isComplete = photoCount >= step.min;
+                const stepNumber = parseInt(stepNum);
+                
+                return `
+                    <div class="bg-white rounded-2xl p-6 shadow-md border border-white/10 cursor-pointer hover:shadow-lg hover:border-blue-300 transition-all step-card-btn" data-step="${stepNumber}">
+                        <div class="flex justify-between items-start mb-4">
+                            <span class="text-4xl">${step.icon}</span>
+                            ${isComplete ? '<span class="text-2xl">✓</span>' : `<span class="bg-blue-100 text-blue-600 text-xs font-black px-3 py-1 rounded-full">${photoCount}/${step.min}</span>`}
+                        </div>
+                        <h3 class="text-lg font-black text-slate-800 mb-2">${step.title}</h3>
+                        <p class="text-xs text-slate-500 mb-4">${step.desc}</p>
+                        <div class="flex items-center justify-between text-sm">
+                            <span class="text-slate-400">Passo ${stepNumber}</span>
+                            <span class="text-blue-600 font-bold">→</span>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            // Adicionar event listeners aos cards
+            document.querySelectorAll('.step-card-btn').forEach(card => {
+                card.addEventListener('click', () => {
+                    const stepNum = parseInt(card.getAttribute('data-step'));
+                    openStep(stepNum);
+                });
+            });
+        }
+
+        function openStep(stepNum) {
+            currentStep = stepNum;
+            isViewingStep = true;
+            
+            // Mostrar conteúdo do passo
+            document.getElementById('steps-grid').classList.add('hidden');
+            document.getElementById('step-content').classList.remove('hidden');
+            document.getElementById('gallery-container').classList.remove('hidden');
+            document.getElementById('footer-nav').classList.remove('hidden');
+            
+            renderStepContent();
+        }
+
+        function closeStep() {
+            isViewingStep = false;
+            
+            // Voltar ao grid
+            document.getElementById('steps-grid').classList.remove('hidden');
+            document.getElementById('step-content').classList.add('hidden');
+            document.getElementById('gallery-container').classList.add('hidden');
+            document.getElementById('footer-nav').classList.add('hidden');
+            
+            // Fechar câmara se estiver aberta
+            const videoPausable = document.getElementById('video');
+            if (videoPausable?.srcObject) {
+                videoPausable.srcObject.getTracks().forEach(t => t.stop());
+                document.getElementById('camera-modal').classList.add('hidden');
+            }
+            
+            renderStepsGrid();
+        }
+
+        function renderStepContent() {
             const s = steps[currentStep];
             document.getElementById('step-icon').innerText = s.icon;
             document.getElementById('step-number').innerText = `Passo ${currentStep} de 5`;
             document.getElementById('step-title').innerText = s.title;
             document.getElementById('step-desc').innerText = s.desc;
-            document.getElementById('btn-prev-step').disabled = currentStep === 1;
-            document.getElementById('btn-next-text').innerText = currentStep === 5 ? "Finalizar" : "Próximo";
             
             const guideImg = document.getElementById('guide-img');
             const guideImgExtra = document.getElementById('guide-img-extra');
@@ -1263,6 +1815,10 @@
             updateUI();
         }
 
+        function renderStep() {
+            renderStepsGrid();
+        }
+
         document.getElementById('btn-shutter').addEventListener('click', () => {
             const v = document.getElementById('video');
             const c = document.getElementById('canvas');
@@ -1287,6 +1843,10 @@
             }
             document.getElementById('camera-modal').classList.add('hidden');
         });
+
+        // Event listeners para voltar ao grid
+        document.getElementById('btn-back-to-grid').addEventListener('click', closeStep);
+        document.getElementById('btn-prev-step').addEventListener('click', closeStep);
 
         function renderHistory() {
             const listContainer = document.getElementById('history-list');
@@ -1808,23 +2368,6 @@
                         }
                     }
                 }
-            }
-        });
-
-        document.getElementById('btn-prev-step').addEventListener('click', () => {
-            if (currentStep > 1) { currentStep--; renderStep(); }
-        });
-
-        document.getElementById('btn-next-step').addEventListener('click', () => {
-            if (currentStep < 5) { currentStep++; renderStep(); }
-            else { 
-                trolleyId = "";
-                currentStep = 1;
-                Object.keys(currentPhotos).forEach(k => currentPhotos[k] = []);
-                document.getElementById('app-container').classList.add('hidden');
-                document.getElementById('footer-nav').classList.add('hidden');
-                document.getElementById('setup-screen').classList.remove('hidden');
-                document.getElementById('trolley-id-input').value = "";
             }
         });
 
