@@ -4,7 +4,7 @@
   "description": "Aplicação de controlo de qualidade e registo profissional de trolleys",
   "start_url": "/trolley/",
   "scope": "/trolley/",
-  "display": "standalone",
+  "display": "fullscreen",
   "orientation": "portrait",
   "theme_color": "#2563eb",
   "background_color": "#ffffff",

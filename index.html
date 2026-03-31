@@ -2,7 +2,7 @@
 <html lang="pt-PT">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>TrolleyCheck - Registo Profissional</title>
     <meta name="theme-color" content="#2563eb">
     <meta name="mobile-web-app-capable" content="yes">
@@ -382,6 +382,11 @@
             <button id="btn-shutter" class="w-20 h-20 bg-white rounded-full border-[6px] border-slate-800 shadow-2xl"></button>
         </div>
     </div>
+
+    <!-- Botão flutuante para reentrar em fullscreen -->
+    <button id="btn-fullscreen" class="hidden fixed bottom-4 right-4 z-[99] bg-slate-800/80 backdrop-blur-md text-white text-xs font-bold px-3 py-2 rounded-xl shadow-lg border border-white/10 flex items-center gap-1" title="Ecrã completo">
+        <span style="font-size:14px">⛶</span> Ecrã completo
+    </button>
 
     <!-- Modal de Loading -->
     <div id="loading-modal" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-[95] hidden flex items-center justify-center">
@@ -2968,6 +2973,45 @@
 
             // Está no ecrã inicial → fica na app (não fecha)
             history.pushState({ app: 'setup' }, '');
+        });
+
+        // ==================== FULLSCREEN (ESCONDER BARRA DO ANDROID) ====================
+        function enterFullscreen() {
+            const el = document.documentElement;
+            const req = el.requestFullscreen || el.webkitRequestFullscreen || el.mozRequestFullScreen || el.msRequestFullscreen;
+            if (req) req.call(el).catch(() => {});
+        }
+
+        function isFullscreen() {
+            return !!(document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement);
+        }
+
+        const btnFs = document.getElementById('btn-fullscreen');
+
+        // Primeiro toque → entrar em fullscreen
+        document.addEventListener('touchstart', function onFirstTouch() {
+            enterFullscreen();
+            document.removeEventListener('touchstart', onFirstTouch);
+        }, { once: true, passive: true });
+
+        // Quando sai do fullscreen → mostrar botão para reentrar
+        document.addEventListener('fullscreenchange', () => {
+            if (!isFullscreen()) {
+                btnFs.classList.remove('hidden');
+            } else {
+                btnFs.classList.add('hidden');
+            }
+        });
+        document.addEventListener('webkitfullscreenchange', () => {
+            if (!isFullscreen()) {
+                btnFs.classList.remove('hidden');
+            } else {
+                btnFs.classList.add('hidden');
+            }
+        });
+
+        btnFs.addEventListener('click', () => {
+            enterFullscreen();
         });
     </script>
 </body>
