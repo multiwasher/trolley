@@ -624,7 +624,7 @@
         // Inicializar IndexedDB para armazenamento offline
         async function initOfflineDB() {
             return new Promise((resolve, reject) => {
-                const request = indexedDB.open('TrolleyCheckDB', 1);
+                const request = indexedDB.open('TrolleyCheckDB', 2);
                 
                 request.onerror = () => {
                     console.error('❌ Erro ao inicializar IndexedDB');
