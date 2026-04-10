@@ -537,14 +537,37 @@
 
         const initApp = async () => {
             try {
+                console.log('🚀 Inicializando Firebase...');
                 const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
+                console.log('✅ App Firebase inicializado:', app.name);
+                
                 auth = getAuth(app);
+                console.log('✅ Auth inicializado');
+                
                 db = getFirestore(app);
+                console.log('✅ Firestore inicializado');
+                
                 onAuthStateChanged(auth, async (u) => {
                     user = u;
-                    if (!u) await signInAnonymously(auth);
+                    if (!u) {
+                        console.log('🔐 Autenticação anónima...');
+                        await signInAnonymously(auth);
+                        console.log('✅ Autenticado anonimamente');
+                    } else {
+                        console.log('✅ Utilizador autenticado (UID:', u.uid.substring(0, 8), '...)');
+                    }
+                    // Diagnosticar estado
+                    console.log(`✅ Estado da Sincronização:`, {
+                        online: isOnline,
+                        autenticado: !!user,
+                        firestore: !!db,
+                        pronto: !!(user && db && isOnline)
+                    });
                 });
-            } catch (err) { console.error(err); }
+            } catch (err) { 
+                console.error('❌ ERRO CRÍTICO ao inicializar Firebase:', err);
+                console.error('Detalhes:', err.message, err.code);
+            }
         };
 
         // Verificar se o ID do trolley já existe no Firebase
@@ -994,17 +1017,52 @@
             });
         }
 
+        // Função de Diagnóstico para verificar estado da aplicação
+        window.diagnosticoApp = function() {
+            console.log('🔍 DIAGNÓSTICO DA APLICAÇÃO:');
+            console.log('═══════════════════════════════════════');
+            console.log('Estado de Conectividade:');
+            console.log('  - navigator.onLine:', navigator.onLine);
+            console.log('  - isOnline (var):', isOnline);
+            console.log('');
+            console.log('Estado do Firebase:');
+            console.log('  - auth:', !!auth);
+            console.log('  - db:', !!db);
+            console.log('  - user:', !!user, user ? `(UID: ${user.uid.substring(0, 8)}...)` : '');
+            console.log('');
+            console.log('Estado de IndexedDB:');
+            console.log('  - offlineDB:', !!offlineDB);
+            console.log('  - offlineDBReady:', offlineDBReady);
+            console.log('');
+            console.log('Pronto para sincronizar?:', !!(user && db && isOnline));
+            console.log('═══════════════════════════════════════');
+            
+            // Retornar estado para fácil acesso
+            return {
+                online: isOnline,
+                navOnline: navigator.onLine,
+                fbAuth: !!auth,
+                fbDb: !!db,
+                fbUser: !!user,
+                readyToSync: !!(user && db && isOnline)
+            };
+        };
+
+        // Chamar diagnóstico no console (disponível como window.diagnosticoApp())
+        console.log('💡 Para diagnosticar a app, execute: diagnosticoApp()');
+
         // Listener para online/offline
         window.addEventListener('online', async () => {
             isOnline = true;
             console.log('🌐 Aplicação online - Iniciando sincronização...');
+            console.log('Estado:', { user: !!user, db: !!db, isOnline });
             
             try {
                 const trolleysSynced = await syncPendingTrolleys();
-                console.log(`Trolleys sincronizados: ${trolleysSynced}`);
+                console.log(`✅ Trolleys sincronizados: ${trolleysSynced}`);
                 
                 const photosSynced = await syncPendingPhotos();
-                console.log(`Fotos sincronizadas: ${photosSynced}`);
+                console.log(`✅ Fotos sincronizadas: ${photosSynced}`);
                 
                 // Aguardar um pouco para os dados aparecerem no Firebase
                 await new Promise(resolve => setTimeout(resolve, 1000));
@@ -1027,6 +1085,20 @@
             isOnline = false;
             console.log('⚠️ Aplicação offline - Registos e fotos serão guardados localmente');
         });
+
+        // Polling periódico para sincronização automática (a cada 10 segundos)
+        setInterval(async () => {
+            // Se ficou online mas não sincronizou ainda
+            if (navigator.onLine && !isOnline) {
+                console.log('🔄 Detectado mudança de rede - atualizando estado...');
+                isOnline = true;
+                // Disparar evento online manualmente
+                window.dispatchEvent(new Event('online'));
+            } else if (!navigator.onLine && isOnline) {
+                console.log('⚠️ Detectado perda de rede - atualizando estado...');
+                isOnline = false;
+            }
+        }, 10000); // Verificar a cada 10 segundos
 
         // Inicializar IndexedDB ao carregar app (não bloqueia o carregamento)
         console.log('📋 Iniciando app...');
@@ -2018,6 +2090,7 @@
                 if (user && db && isOnline) {
                     try {
                         console.log(`📤 Sincronizando com Firebase... (${filename})`);
+                        console.log('Estado:', { user: !!user, db: !!db, isOnline, trolleyId, step: currentStep });
                         
                         await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'photo_urls'), {
                             trolleyId: String(trolleyId),
@@ -2051,11 +2124,14 @@
                         showSyncNotification(true);
                     } catch (firebaseError) {
                         console.warn(`⚠️ Erro ao sincronizar (guardado offline): ${firebaseError.message}`);
+                        console.warn('Firebase Error:', firebaseError.code);
                         showSyncNotification(false, true); // Guardado offline
                     }
                 } else {
-                    // Offline - guardar para sincronização posterior
-                    console.log(`📴 Offline - Foto guardada para sincronização automática`);
+                    // Offline ou Firebase não inicializado - diagnostic
+                    const reason = !user ? 'SEM AUTENTICAÇÃO' : !db ? 'FIRESTORE NÃO PRONTO' : 'OFFLINE';
+                    console.warn(`⚠️ Foto guardada OFFLINE (Motivo: ${reason})`);
+                    console.warn('Estado:', { user: !!user, db: !!db, isOnline, navigator_online: navigator.onLine });
                     showSyncNotification(false, true); // Guardado offline
                 }
             } catch (error) {
