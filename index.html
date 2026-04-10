@@ -1048,8 +1048,48 @@
             };
         };
 
+        // Diagnóstico específico para o botão Iniciar Registo
+        window.testStartRegisto = function(testId = 'TEST123') {
+            console.log('🧪 TESTE DE INICIAR REGISTO:');
+            console.log('═══════════════════════════════════════');
+            
+            const input = document.getElementById('trolley-id-input');
+            const btn = document.getElementById('btn-start-registo');
+            
+            console.log('Estado do Input:');
+            console.log('  - Elemento encontrado:', !!input);
+            console.log('  - Valor atual:', input?.value);
+            console.log('  - Disabled:', input?.disabled);
+            
+            console.log('Estado do Botão:');
+            console.log('  - Elemento encontrado:', !!btn);
+            console.log('  - Disabled:', btn?.disabled);
+            console.log('  - Visível:', btn?.offsetHeight > 0);
+            
+            // Preencher input com teste
+            if (input) {
+                input.value = testId;
+                console.log(`✅ Input preenchido com: "${testId}"`);
+                
+                // Tentar chamar checkTrolleyIdExists
+                console.log('Testando checkTrolleyIdExists()...');
+                checkTrolleyIdExists(testId).then(exists => {
+                    console.log(`  - ID existe: ${exists}`);
+                });
+            }
+            
+            // Listar listeners no botão
+            if (btn) {
+                console.log('Botão configurado - clique para iniciar registo');
+            }
+            
+            console.log('═══════════════════════════════════════');
+            return { input: !!input, btn: !!btn, inputValue: input?.value };
+        };
+
         // Chamar diagnóstico no console (disponível como window.diagnosticoApp())
         console.log('💡 Para diagnosticar a app, execute: diagnosticoApp()');
+        console.log('💡 Para testar Iniciar Registo, execute: testStartRegisto()');
 
         // Função para testar conectividade real (não apenas navigator.onLine)
         async function testRealConnectivity() {
@@ -1182,6 +1222,23 @@
 
         // Inicializar IndexedDB ao carregar app (não bloqueia o carregamento)
         console.log('📋 Iniciando app...');
+        
+        // Verificar se elementos DOM críticos estão prontos
+        const criticalElements = {
+            'btn-start-registo': document.getElementById('btn-start-registo'),
+            'trolley-id-input': document.getElementById('trolley-id-input'),
+            'setup-screen': document.getElementById('setup-screen'),
+            'app-container': document.getElementById('app-container')
+        };
+        
+        Object.entries(criticalElements).forEach(([name, el]) => {
+            if (el) {
+                console.log(`✅ DOM pronto: ${name}`);
+            } else {
+                console.error(`❌ DOM FALTANDO: ${name}`);
+            }
+        });
+        
         (async () => {
             try {
                 console.log('🔄 Tentando inicializar IndexedDB...');
@@ -2050,56 +2107,84 @@
         document.getElementById('btn-view-history').addEventListener('click', showTrolleysHistory);
 
         document.getElementById('btn-start-registo').addEventListener('click', async () => {
-            trolleyId = document.getElementById('trolley-id-input').value.trim().toUpperCase();
-            if (trolleyId.length < 2) return;
-            
-            // Verificar se o ID já existe no Firebase (sincroniza entre dispositivos)
-            const existsInFirebase = await checkTrolleyIdExists(trolleyId);
-            if (existsInFirebase) {
-                alert(`⚠️ O ID "${trolleyId}" já existe! Utilize um ID diferente.`);
-                return;
-            }
-            
-            document.getElementById('display-trolley-id').innerText = trolleyId;
-            
-            // Atualizar data e hora de registo
-            const now = new Date();
-            const dataRegisto = now.toLocaleString('pt-PT');
-            document.getElementById('display-registration-date').innerText = dataRegisto;
-            
-            // Inicializar o registo no sessionArchive com a data
-            if (!sessionArchive[trolleyId]) {
-                sessionArchive[trolleyId] = [];
-            }
-            // Guardar a data de registo no primeiro elemento (metadata)
-            sessionArchive[trolleyId]._registrationDate = dataRegisto;
-            localStorage.setItem('trolley_session_archive', JSON.stringify(sessionArchive));
-            
-            // Guardar registo em IndexedDB se estiver offline
-            if (!isOnline && offlineDBReady) {
-                const saved = await saveTrolleyOffline({
-                    trolleyId: trolleyId,
-                    createdAt: Date.now(),
-                    dataRegisto: dataRegisto
-                });
-                if (saved) {
-                    console.log(`📴 Registo guardado offline: ${trolleyId}`);
-                } else {
-                    console.warn(`⚠️ Erro ao guardar registo offline: ${trolleyId}`);
+            try {
+                console.log('🔘 Clique em Iniciar Registo');
+                
+                const input = document.getElementById('trolley-id-input');
+                trolleyId = input.value.trim().toUpperCase();
+                
+                console.log(`✍️ ID inserido: "${trolleyId}" (comprimento: ${trolleyId.length})`);
+                
+                if (trolleyId.length < 2) {
+                    console.warn('⚠️ ID muito curto');
+                    alert('Por favor, insira um ID com pelo menos 2 caracteres');
+                    return;
                 }
-            } else if (!isOnline) {
-                console.warn('⚠️ IndexedDB ainda não está pronto - registo será guardado apenas em localStorage');
+                
+                console.log(`🔍 Verificando se ID "${trolleyId}" já existe...`);
+                console.log(`   Estado atual:`, { isOnline, db: !!db, offlineDBReady });
+                
+                // Verificar se o ID já existe no Firebase (sincroniza entre dispositivos)
+                const existsInFirebase = await checkTrolleyIdExists(trolleyId);
+                console.log(`   Resultado: ${existsInFirebase ? 'EXISTE' : 'DISPONÍVEL'}`);
+                
+                if (existsInFirebase) {
+                    console.warn(`⚠️ ID "${trolleyId}" já existe`);
+                    alert(`⚠️ O ID "${trolleyId}" já existe! Utilize um ID diferente.`);
+                    return;
+                }
+                
+                console.log(`✅ ID "${trolleyId}" disponível - iniciando registo...`);
+                
+                document.getElementById('display-trolley-id').innerText = trolleyId;
+                
+                // Atualizar data e hora de registo
+                const now = new Date();
+                const dataRegisto = now.toLocaleString('pt-PT');
+                document.getElementById('display-registration-date').innerText = dataRegisto;
+                
+                // Inicializar o registo no sessionArchive com a data
+                if (!sessionArchive[trolleyId]) {
+                    sessionArchive[trolleyId] = [];
+                }
+                // Guardar a data de registo no primeiro elemento (metadata)
+                sessionArchive[trolleyId]._registrationDate = dataRegisto;
+                localStorage.setItem('trolley_session_archive', JSON.stringify(sessionArchive));
+                
+                // Guardar registo em IndexedDB se estiver offline
+                if (!isOnline && offlineDBReady) {
+                    const saved = await saveTrolleyOffline({
+                        trolleyId: trolleyId,
+                        createdAt: Date.now(),
+                        dataRegisto: dataRegisto
+                    });
+                    if (saved) {
+                        console.log(`📴 Registo guardado offline: ${trolleyId}`);
+                    } else {
+                        console.warn(`⚠️ Erro ao guardar registo offline: ${trolleyId}`);
+                    }
+                } else if (!isOnline) {
+                    console.warn('⚠️ IndexedDB ainda não está pronto - registo será guardado apenas em localStorage');
+                }
+                
+                // Inicializar contador de fotos a 0
+                document.getElementById('display-total-photos').innerText = '0';
+                
+                console.log(`🎉 Mostrando app - trolleyId: ${trolleyId}`);
+                document.getElementById('setup-screen').classList.add('hidden');
+                document.getElementById('app-container').classList.remove('hidden');
+                document.getElementById('footer-nav').classList.remove('hidden');
+                document.querySelector('.tabs-nav').classList.remove('hidden');
+                
+                console.log('✅ Registo iniciado com sucesso');
+                renderStep();
+                history.pushState({ app: 'grid' }, '');
+            } catch (error) {
+                console.error('❌ ERRO ao iniciar registo:', error.message);
+                console.error('Stack:', error.stack);
+                alert(`❌ Erro ao iniciar registo: ${error.message}`);
+                throw error; // Re-throw para debug
             }
-            
-            // Inicializar contador de fotos a 0
-            document.getElementById('display-total-photos').innerText = '0';
-            
-            document.getElementById('setup-screen').classList.add('hidden');
-            document.getElementById('app-container').classList.remove('hidden');
-            document.getElementById('footer-nav').classList.remove('hidden');
-            document.querySelector('.tabs-nav').classList.remove('hidden');
-            renderStep();
-            history.pushState({ app: 'grid' }, '');
         });
 
         async function savePhoto(dataUrl) {
