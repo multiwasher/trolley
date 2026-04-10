@@ -2004,8 +2004,8 @@
                 
                 await savePhotoOffline(photoData);
                 
-                // Tentar sincronizar com Firebase se online
-                if (user && db && isOnline) {
+                // Tentar sincronizar com Firebase (não depender de navigator.onLine que é instável no mobile)
+                if (user && db) {
                     try {
                         console.log(`📤 Sincronizando com Firebase... (${filename})`);
                         
@@ -2044,8 +2044,8 @@
                         showSyncNotification(false, true); // Guardado offline
                     }
                 } else {
-                    // Offline - guardar para sincronização posterior
-                    console.log(`📴 Offline - Foto guardada para sincronização automática`);
+                    // Sem user/db - guardar para sincronização posterior
+                    console.log(`📴 Sem autenticação - Foto guardada para sincronização automática`);
                     showSyncNotification(false, true); // Guardado offline
                 }
             } catch (error) {
