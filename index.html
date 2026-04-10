@@ -1051,23 +1051,71 @@
         // Chamar diagnóstico no console (disponível como window.diagnosticoApp())
         console.log('💡 Para diagnosticar a app, execute: diagnosticoApp()');
 
+        // Função para testar conectividade real (não apenas navigator.onLine)
+        async function testRealConnectivity() {
+            try {
+                // Tentar fazer um fetch HEAD a um recurso pequeno
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 3000); // 3 segundos timeout
+                
+                const response = await fetch('https://www.google.com/favicon.ico', {
+                    method: 'HEAD',
+                    signal: controller.signal,
+                    mode: 'no-cors'
+                });
+                
+                clearTimeout(timeoutId);
+                return true; // Online
+            } catch (err) {
+                return false; // Offline
+            }
+        }
+
+        // Função para verificar se Firebase está pronto
+        function isFirebaseReady() {
+            return !!auth && !!db && !!user;
+        }
+
         // Listener para online/offline
         window.addEventListener('online', async () => {
             isOnline = true;
-            console.log('🌐 Aplicação online - Iniciando sincronização...');
-            console.log('Estado:', { user: !!user, db: !!db, isOnline });
+            console.log('🌐 Aplicação online - Aguardando Firebase estar pronto...');
+            
+            // Aguardar Firebase estar pronto antes de sincronizar
+            let firebaseReady = false;
+            let attempts = 0;
+            while (!firebaseReady && attempts < 10) {
+                if (isFirebaseReady()) {
+                    firebaseReady = true;
+                    console.log('✅ Firebase pronto!');
+                    break;
+                }
+                attempts++;
+                console.log(`⏳ Aguardando Firebase (tentativa ${attempts}/10)...`);
+                await new Promise(resolve => setTimeout(resolve, 500));
+            }
+            
+            if (!firebaseReady) {
+                console.warn('⚠️ Firebase não ficou pronto após 5 segundos');
+            }
+            
+            console.log('Estado:', { user: !!user, db: !!db, isOnline, firebaseReady });
             
             try {
+                console.log('🔄 Iniciando sincronização...');
                 const trolleysSynced = await syncPendingTrolleys();
                 console.log(`✅ Trolleys sincronizados: ${trolleysSynced}`);
                 
                 const photosSynced = await syncPendingPhotos();
                 console.log(`✅ Fotos sincronizadas: ${photosSynced}`);
                 
-                // Aguardar um pouco para os dados aparecerem no Firebase
-                await new Promise(resolve => setTimeout(resolve, 1000));
-                
-                // Recarregar histórico se estiver aberto
+                if (trolleysSynced || photosSynced) {
+                    console.log(`✨ Sincronização concluída com sucesso!`);
+                    
+                    // Aguardar um pouco para os dados aparecerem no Firebase
+                    await new Promise(resolve => setTimeout(resolve, 1500));
+                    
+                    // Recarregar histórico se estiver aberto
                 const trolleysModal = document.getElementById('trolleys-modal');
                 if (trolleysModal && !trolleysModal.classList.contains('hidden')) {
                     console.log('🔄 Recarregando histórico...');
@@ -1086,19 +1134,51 @@
             console.log('⚠️ Aplicação offline - Registos e fotos serão guardados localmente');
         });
 
-        // Polling periódico para sincronização automática (a cada 10 segundos)
+        // Polling periódico para sincronização automática (a cada 5 segundos)
+        let lastSync = 0;
         setInterval(async () => {
-            // Se ficou online mas não sincronizou ainda
-            if (navigator.onLine && !isOnline) {
-                console.log('🔄 Detectado mudança de rede - atualizando estado...');
+            const now = Date.now();
+            const navOnline = navigator.onLine;
+            
+            // Testar conectividade real se navigator.onLine está inconsistente
+            let actualOnline = navOnline;
+            if (navOnline && !isOnline) {
+                // Navigator diz online mas app marcou como offline - testar com fetch
+                console.log('🔍 Testando conectividade real...');
+                actualOnline = await testRealConnectivity();
+                console.log(`  Conectividade real: ${actualOnline}`);
+            }
+            
+            // Se mudou para online
+            if (actualOnline && !isOnline) {
+                console.log('🔄 Detectado mudança de rede para ONLINE - disparando evento...');
                 isOnline = true;
-                // Disparar evento online manualmente
                 window.dispatchEvent(new Event('online'));
-            } else if (!navigator.onLine && isOnline) {
-                console.log('⚠️ Detectado perda de rede - atualizando estado...');
+            } 
+            // Se mudou para offline
+            else if (!actualOnline && isOnline) {
+                console.log('⚠️ Detectado mudança de rede para OFFLINE');
                 isOnline = false;
             }
-        }, 10000); // Verificar a cada 10 segundos
+            
+            // Se online e tem dados pendentes, sincronizar
+            if (isOnline && isFirebaseReady() && (now - lastSync > 30000)) {
+                // Sincronizar a cada 30 segundos se houver dados pendentes
+                const hasOfflineData = offlineDB ? true : false;
+                if (hasOfflineData) {
+                    console.log('🔄 Executando sincronização automática...');
+                    lastSync = now;
+                    try {
+                        const photosSynced = await syncPendingPhotos();
+                        if (photosSynced) {
+                            console.log(`✅ ${photosSynced} fotos sincronizadas automaticamente`);
+                        }
+                    } catch (err) {
+                        console.warn('⚠️ Erro na sincronização automática:', err.message);
+                    }
+                }
+            }
+        }, 5000); // Verificar a cada 5 segundos
 
         // Inicializar IndexedDB ao carregar app (não bloqueia o carregamento)
         console.log('📋 Iniciando app...');
@@ -2025,6 +2105,23 @@
         async function savePhoto(dataUrl) {
             console.log(`💾 savePhoto() - Guardando foto para passo ${currentStep}`);
             
+            // Aguardar Firebase estar pronto (timeout 3 segundos)
+            let firebaseReady = isFirebaseReady();
+            if (!firebaseReady) {
+                console.log('⏳ Aguardando Firebase inicializar...');
+                for (let i = 0; i < 6; i++) {
+                    await new Promise(resolve => setTimeout(resolve, 500));
+                    if (isFirebaseReady()) {
+                        firebaseReady = true;
+                        console.log('✅ Firebase ficou pronto!');
+                        break;
+                    }
+                }
+                if (!firebaseReady) {
+                    console.warn('⚠️ Firebase ainda não está pronto após 3 segundos');
+                }
+            }
+            
             const photoIndex = currentPhotos[currentStep].length + 1;
             const dataHora = new Date().toLocaleString('pt-PT');
             const filename = `Trolley_${trolleyId}_P${currentStep}_${Date.now()}.jpg`;
@@ -2154,7 +2251,18 @@
                 toast.innerHTML = '☁️ Sincronizado com sucesso';
             } else if (offline) {
                 toast.classList.add('border-blue-400', 'text-blue-700');
-                toast.innerHTML = '💾 Guardado offline (sincronizará depois)';
+                // Mostrar motivo mais específico
+                let reason = '💾 Guardado offline';
+                if (!isOnline) {
+                    reason += ' (app offline)';
+                } else if (!user) {
+                    reason += ' (não autenticado)';
+                } else if (!db) {
+                    reason += ' (Firebase não pronto)';
+                } else {
+                    reason += ' (será sincronizado)';
+                }
+                toast.innerHTML = reason;
             } else {
                 toast.classList.add('border-amber-400', 'text-amber-700');
                 toast.innerHTML = '⚠️ Erro ao sincronizar (salvo localmente)';
@@ -2162,12 +2270,12 @@
             
             container.appendChild(toast);
             
-            // Remover após 3 segundos
+            // Remover após 4 segundos
             setTimeout(() => {
                 toast.style.opacity = '0';
                 toast.style.transition = 'opacity 0.3s ease-out';
                 setTimeout(() => toast.remove(), 300);
-            }, 3000);
+            }, 4000);
         }
 
         // Função para mostrar notificação de foto capturada
