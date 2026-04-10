@@ -1997,10 +1997,10 @@
             syncIcon.classList.remove('hidden');
             
             try {
-                // Comprimir imagem (85% quality)
-                console.log(`🗜️ Comprimindo imagem...`);
-                const compressedDataUrl = await compressImage(dataUrl, 0.85);
-                const base64Data = compressedDataUrl.split(',')[1];
+                // Usar imagem já capturada em qualidade alta (95%)
+                console.log(`📸 Foto capturada em qualidade 95%`);
+                const base64Data = dataUrl.split(',')[1];
+                const compressedDataUrl = dataUrl;
                 
                 // Guardar em IndexedDB para backup offline
                 const photoData = {
