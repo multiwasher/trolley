@@ -1987,10 +1987,24 @@
             syncIcon.classList.remove('hidden');
             
             try {
-                // Comprimir imagem (85% quality)
-                console.log(`🗜️ Comprimindo imagem...`);
-                const compressedDataUrl = await compressImage(dataUrl, 0.85);
-                const base64Data = compressedDataUrl.split(',')[1];
+                // Comprimir imagem (85% quality para desktop, 65% para mobile)
+                const isMobile = window.innerWidth < 768;
+                const quality = isMobile ? 0.65 : 0.85;
+                console.log(`🗜️ Comprimindo imagem (${isMobile ? 'mobile' : 'desktop'}, ${(quality*100).toFixed(0)}%)`);
+                let compressedDataUrl = await compressImage(dataUrl, quality);
+                let base64Data = compressedDataUrl.split(',')[1];
+                
+                // Verificar tamanho da imagem antes de enviar
+                let base64Size = base64Data.length;
+                let estimatedSize = Math.round(base64Size * 0.75 / 1024); // converter base64 para KB aproximado
+                console.log(`📏 Tamanho estimado: ${estimatedSize}KB`);
+                
+                if (estimatedSize > 800) {
+                    console.warn(`⚠️ Imagem grande (${estimatedSize}KB). Tentando compressão adicional...`);
+                    const superCompressed = await compressImage(dataUrl, isMobile ? 0.5 : 0.7);
+                    compressedDataUrl = superCompressed;
+                    base64Data = superCompressed.split(',')[1];
+                }
                 
                 // Guardar em IndexedDB para backup offline
                 const photoData = {
@@ -2006,46 +2020,56 @@
                 
                 // Tentar sincronizar com Firebase (não depender de navigator.onLine que é instável no mobile)
                 if (user && db) {
-                    try {
-                        console.log(`📤 Sincronizando com Firebase... (${filename})`);
-                        
-                        await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'photo_urls'), {
-                            trolleyId: String(trolleyId),
-                            step: String(currentStep),
-                            filename: filename,
-                            imageBase64: base64Data,
-                            previewUrl: compressedDataUrl,
-                            downloadUrl: compressedDataUrl,
-                            timestamp: Date.now(),
-                            dataHora: dataHora
-                        });
-                        
-                        // Guardar metadata
-                        await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'photos'), {
-                            trolleyId: String(trolleyId),
-                            step: currentStep,
-                            data_hora: dataHora,
-                            timestamp: Date.now(),
-                            hasImage: true
-                        });
-                        
-                        // Marcar como sincronizado em IndexedDB
-                        if (offlineDB) {
-                            const tx = offlineDB.transaction(['photos'], 'readwrite');
-                            const store = tx.objectStore('photos');
-                            photoData.synced = 1;
-                            store.add(photoData);
+                    let uploadSuccess = false;
+                    let lastError = null;
+                    
+                    // Retry logic: tentar 2 vezes antes de desistir
+                    for (let attempt = 1; attempt <= 2; attempt++) {
+                        try {
+                            console.log(`📤 Sincronizando com Firebase... Tentativa ${attempt}/2 (${filename})`);
+                            
+                            await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'photo_urls'), {
+                                trolleyId: String(trolleyId),
+                                step: String(currentStep),
+                                filename: filename,
+                                previewUrl: compressedDataUrl,
+                                downloadUrl: compressedDataUrl,
+                                timestamp: Date.now(),
+                                dataHora: dataHora
+                            });
+                            
+                            // Guardar metadata
+                            await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'photos'), {
+                                trolleyId: String(trolleyId),
+                                step: currentStep,
+                                data_hora: dataHora,
+                                timestamp: Date.now(),
+                                hasImage: true
+                            });
+                            
+                            uploadSuccess = true;
+                            console.log(`✅ Imagem sincronizada com sucesso`);
+                            showSyncNotification(true);
+                            break; // Sair do loop se sucesso
+                        } catch (firebaseError) {
+                            lastError = firebaseError;
+                            console.warn(`⚠️ Tentativa ${attempt} falhou:`, firebaseError.code, firebaseError.message);
+                            
+                            if (attempt < 2) {
+                                // Aguardar antes de retry
+                                await new Promise(resolve => setTimeout(resolve, 1000));
+                            }
                         }
-                        
-                        console.log(`✅ Imagem sincronizada com sucesso`);
-                        showSyncNotification(true);
-                    } catch (firebaseError) {
-                        console.warn(`⚠️ Erro ao sincronizar (guardado offline): ${firebaseError.message}`);
+                    }
+                    
+                    if (!uploadSuccess) {
+                        // Todos os retries falharam
+                        console.error(`❌ Falha ao sincronizar após 2 tentativas:`, lastError?.code, lastError?.message);
                         showSyncNotification(false, true); // Guardado offline
                     }
                 } else {
                     // Sem user/db - guardar para sincronização posterior
-                    console.log(`📴 Sem autenticação - Foto guardada para sincronização automática`);
+                    console.log(`📴 Sem autenticação (user: ${!!user}, db: ${!!db}) - Foto guardada para sincronização automática`);
                     showSyncNotification(false, true); // Guardado offline
                 }
             } catch (error) {
