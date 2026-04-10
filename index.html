@@ -918,12 +918,11 @@
                         
                         for (const photo of pendingPhotos) {
                             try {
-                                // Guardar em Firestore
+                                // Guardar em Firestore (SEM imageBase64 - apenas metadata e preview)
                                 await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'photo_urls'), {
                                     trolleyId: String(photo.trolleyId),
                                     step: String(photo.step),
                                     filename: photo.filename,
-                                    imageBase64: photo.imageBase64.split(',')[1],
                                     previewUrl: photo.imageBase64,
                                     downloadUrl: photo.imageBase64,
                                     timestamp: photo.timestamp,
@@ -2075,23 +2074,25 @@
             syncIcon.classList.remove('hidden');
             
             try {
-                // Comprimir imagem (85% quality para desktop, 65% para mobile)
+                // Comprimir imagem (85% quality para desktop, 55% para mobile - ser agressivo!)
                 const isMobile = window.innerWidth < 768;
-                const quality = isMobile ? 0.65 : 0.85;
+                let quality = isMobile ? 0.55 : 0.85;
                 console.log(`🗜️ Comprimindo imagem (${isMobile ? 'mobile' : 'desktop'}, ${(quality*100).toFixed(0)}%)`);
                 let compressedDataUrl = await compressImage(dataUrl, quality);
-                let base64Data = compressedDataUrl.split(',')[1];
                 
-                // Verificar tamanho da imagem antes de enviar
-                let base64Size = base64Data.length;
-                let estimatedSize = Math.round(base64Size * 0.75 / 1024); // converter base64 para KB aproximado
-                console.log(`📏 Tamanho estimado: ${estimatedSize}KB`);
+                // Verificar tamanho da data URL (que é o que envia para Firebase)
+                let dataUrlSize = new Blob([compressedDataUrl]).size;
+                let estimatedKB = Math.round(dataUrlSize / 1024);
+                console.log(`📏 Tamanho data URL: ${estimatedKB}KB`);
                 
-                if (estimatedSize > 800) {
-                    console.warn(`⚠️ Imagem grande (${estimatedSize}KB). Tentando compressão adicional...`);
-                    const superCompressed = await compressImage(dataUrl, isMobile ? 0.5 : 0.7);
-                    compressedDataUrl = superCompressed;
-                    base64Data = superCompressed.split(',')[1];
+                // Se > 600KB (seguro para Firestore 1MB), comprimir mais
+                if (estimatedKB > 600) {
+                    console.warn(`⚠️ Data URL grande (${estimatedKB}KB). Aplicando compressão agressiva...`);
+                    quality = isMobile ? 0.35 : 0.60;
+                    compressedDataUrl = await compressImage(dataUrl, quality);
+                    dataUrlSize = new Blob([compressedDataUrl]).size;
+                    estimatedKB = Math.round(dataUrlSize / 1024);
+                    console.log(`📏 Novo tamanho: ${estimatedKB}KB`);
                 }
                 
                 // Guardar em IndexedDB para backup offline
