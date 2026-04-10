@@ -175,6 +175,109 @@
         .photo-toast .icon-check {
             animation: pulse-check 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
         }
+
+        /* Debug Panel Styles */
+        .debug-panel-button {
+            position: fixed;
+            bottom: 100px;
+            right: 20px;
+            z-index: 100;
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+            transition: all 0.3s ease;
+        }
+
+        .debug-panel-button:hover {
+            transform: scale(1.1);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
+        }
+
+        .debug-panel-container {
+            position: fixed;
+            bottom: 170px;
+            right: 20px;
+            z-index: 99;
+            width: 320px;
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+            overflow: hidden;
+            max-height: 0;
+            transition: max-height 0.3s ease;
+        }
+
+        .debug-panel-container.open {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .debug-panel-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 12px 16px;
+            font-weight: bold;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .debug-panel-close {
+            background: none;
+            border: none;
+            color: white;
+            cursor: pointer;
+            font-size: 18px;
+            padding: 0;
+        }
+
+        .debug-panel-content {
+            padding: 12px 16px;
+            font-size: 12px;
+            font-family: 'Monaco', 'Menlo', monospace;
+            color: #333;
+        }
+
+        .debug-item {
+            margin-bottom: 8px;
+            padding: 6px;
+            background: #f5f5f5;
+            border-left: 3px solid #667eea;
+            border-radius: 4px;
+        }
+
+        .debug-item-label {
+            font-weight: bold;
+            color: #667eea;
+            font-size: 11px;
+            text-transform: uppercase;
+        }
+
+        .debug-item-value {
+            color: #333;
+            margin-top: 2px;
+        }
+
+        .status-ok {
+            color: #10b981;
+        }
+
+        .status-warn {
+            color: #f59e0b;
+        }
+
+        .status-error {
+            color: #ef4444;
+        }
     </style>
 </head>
 <body class="min-h-screen flex flex-col pb-24">
@@ -474,6 +577,45 @@
 
     <!-- Notificação de Foto Capturada -->
     <div id="photo-toast-container" class="fixed bottom-40 left-1/2 transform -translate-x-1/2 z-[110] pointer-events-none"></div>
+
+    <!-- Debug Panel (Mobile-friendly) -->
+    <button id="debug-panel-button" class="debug-panel-button" title="Debug Info">🐛</button>
+    <div id="debug-panel-container" class="debug-panel-container">
+        <div class="debug-panel-header">
+            Diagnóstico 🔍
+            <button id="debug-panel-close" class="debug-panel-close">✕</button>
+        </div>
+        <div class="debug-panel-content">
+            <div class="debug-item">
+                <div class="debug-item-label">Status Online</div>
+                <div class="debug-item-value status-warn" id="debug-online">🔄 Verificando...</div>
+            </div>
+            <div class="debug-item">
+                <div class="debug-item-label">Firebase Auth</div>
+                <div class="debug-item-value status-warn" id="debug-auth">🔄 Inicializando...</div>
+            </div>
+            <div class="debug-item">
+                <div class="debug-item-label">Firebase DB</div>
+                <div class="debug-item-value status-warn" id="debug-db">🔄 Inicializando...</div>
+            </div>
+            <div class="debug-item">
+                <div class="debug-item-label">Utilizador</div>
+                <div class="debug-item-value status-warn" id="debug-user">🔄 Aguardando...</div>
+            </div>
+            <div class="debug-item">
+                <div class="debug-item-label">Pronto para Sincronizar</div>
+                <div class="debug-item-value status-warn" id="debug-sync">❌ Não</div>
+            </div>
+            <div class="debug-item">
+                <div class="debug-item-label">IndexedDB</div>
+                <div class="debug-item-value status-warn" id="debug-idb">🔄 Inicializando...</div>
+            </div>
+            <div class="debug-item">
+                <div class="debug-item-label">Última Sincronização</div>
+                <div class="debug-item-value" id="debug-last-sync">Nunca</div>
+            </div>
+        </div>
+    </div>
 
     <script>
         // Funções de Loading
@@ -898,6 +1040,7 @@
                         }
                         
                         console.log('✨ Sincronização de fotos concluída');
+                        if (synced) lastSyncTime = Date.now();
                         resolve(synced);
                     };
                     
@@ -1003,6 +1146,7 @@
                         }
                         
                         console.log('✨ Sincronização de registos concluída');
+                        if (synced) lastSyncTime = Date.now();
                         resolve(synced);
                     };
                     
@@ -1116,6 +1260,147 @@
             return !!auth && !!db && !!user;
         }
 
+        // Variável global para tracking de última sincronização
+        let lastSyncTime = null;
+
+        // Função para atualizar o painel de debug no UI
+        function updateDebugPanel() {
+            try {
+                // Status Online
+                const onlineEl = document.getElementById('debug-online');
+                if (onlineEl) {
+                    if (isOnline) {
+                        onlineEl.innerHTML = '✅ Online';
+                        onlineEl.className = 'debug-item-value status-ok';
+                    } else {
+                        onlineEl.innerHTML = '❌ Offline';
+                        onlineEl.className = 'debug-item-value status-error';
+                    }
+                }
+
+                // Firebase Auth
+                const authEl = document.getElementById('debug-auth');
+                if (authEl) {
+                    if (auth && user) {
+                        authEl.innerHTML = `✅ Autenticado`;
+                        authEl.className = 'debug-item-value status-ok';
+                    } else if (auth) {
+                        authEl.innerHTML = '🔄 Inicializando...';
+                        authEl.className = 'debug-item-value status-warn';
+                    } else {
+                        authEl.innerHTML = '❌ Não inicializado';
+                        authEl.className = 'debug-item-value status-error';
+                    }
+                }
+
+                // Firebase DB
+                const dbEl = document.getElementById('debug-db');
+                if (dbEl) {
+                    if (db) {
+                        dbEl.innerHTML = '✅ Pronto';
+                        dbEl.className = 'debug-item-value status-ok';
+                    } else {
+                        dbEl.innerHTML = '❌ Não inicializado';
+                        dbEl.className = 'debug-item-value status-error';
+                    }
+                }
+
+                // Utilizador
+                const userEl = document.getElementById('debug-user');
+                if (userEl) {
+                    if (user) {
+                        const uid = user.uid.substring(0, 8);
+                        userEl.innerHTML = `✅ ${uid}...`;
+                        userEl.className = 'debug-item-value status-ok';
+                    } else {
+                        userEl.innerHTML = '❌ Sem utilizador';
+                        userEl.className = 'debug-item-value status-error';
+                    }
+                }
+
+                // Pronto para Sincronizar
+                const syncEl = document.getElementById('debug-sync');
+                if (syncEl) {
+                    if (isFirebaseReady() && isOnline) {
+                        syncEl.innerHTML = '✅ Sim';
+                        syncEl.className = 'debug-item-value status-ok';
+                    } else {
+                        syncEl.innerHTML = '❌ Não';
+                        syncEl.className = 'debug-item-value status-error';
+                    }
+                }
+
+                // IndexedDB
+                const idbEl = document.getElementById('debug-idb');
+                if (idbEl) {
+                    if (offlineDBReady && offlineDB) {
+                        idbEl.innerHTML = '✅ Pronto';
+                        idbEl.className = 'debug-item-value status-ok';
+                    } else if (offlineDBReady) {
+                        idbEl.innerHTML = '🔄 Inicializando...';
+                        idbEl.className = 'debug-item-value status-warn';
+                    } else {
+                        idbEl.innerHTML = '❌ Não disponível';
+                        idbEl.className = 'debug-item-value status-error';
+                    }
+                }
+
+                // Última Sincronização
+                const lastSyncEl = document.getElementById('debug-last-sync');
+                if (lastSyncEl) {
+                    if (lastSyncTime) {
+                        const ago = Math.round((Date.now() - lastSyncTime) / 1000);
+                        if (ago < 60) {
+                            lastSyncEl.innerHTML = `✅ Há ${ago}s`;
+                        } else {
+                            const mins = Math.round(ago / 60);
+                            lastSyncEl.innerHTML = `✅ Há ${mins}m`;
+                        }
+                    } else {
+                        lastSyncEl.innerHTML = '⚫ Nenhuma';
+                    }
+                }
+            } catch (err) {
+                console.error('❌ Erro ao atualizar painel de debug:', err);
+            }
+        }
+
+        // Event listeners para o painel de debug
+        document.addEventListener('DOMContentLoaded', () => {
+            const debugButton = document.getElementById('debug-panel-button');
+            const debugContainer = document.getElementById('debug-panel-container');
+            const debugCloseBtn = document.getElementById('debug-panel-close');
+            
+            if (debugButton && debugContainer) {
+                // Abrir/fechar painel
+                debugButton.addEventListener('click', () => {
+                    debugContainer.classList.toggle('open');
+                    updateDebugPanel();
+                });
+
+                // Fechar painel
+                if (debugCloseBtn) {
+                    debugCloseBtn.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        debugContainer.classList.remove('open');
+                    });
+                }
+
+                // Fechar ao clicar fora
+                debugContainer.addEventListener('click', (e) => {
+                    if (e.target === debugContainer) {
+                        debugContainer.classList.remove('open');
+                    }
+                });
+            }
+
+            // Atualizar painel a cada 2 segundos
+            setInterval(updateDebugPanel, 2000);
+        });
+        
+        // Inicial update
+        updateDebugPanel();
+
         // Listener para online/offline
         window.addEventListener('online', async () => {
             isOnline = true;
@@ -1151,6 +1436,7 @@
                 
                 if (trolleysSynced || photosSynced) {
                     console.log(`✨ Sincronização concluída com sucesso!`);
+                    lastSyncTime = Date.now();
                     
                     // Aguardar um pouco para os dados aparecerem no Firebase
                     await new Promise(resolve => setTimeout(resolve, 1500));
