@@ -1156,13 +1156,14 @@
                     await new Promise(resolve => setTimeout(resolve, 1500));
                     
                     // Recarregar histórico se estiver aberto
-                const trolleysModal = document.getElementById('trolleys-modal');
-                if (trolleysModal && !trolleysModal.classList.contains('hidden')) {
-                    console.log('🔄 Recarregando histórico...');
-                    await showTrolleysHistory();
-                    console.log('✅ Histórico recarregado');
-                } else {
-                    console.log('📴 Modal de histórico não está aberta');
+                    const trolleysModal = document.getElementById('trolleys-modal');
+                    if (trolleysModal && !trolleysModal.classList.contains('hidden')) {
+                        console.log('🔄 Recarregando histórico...');
+                        await showTrolleysHistory();
+                        console.log('✅ Histórico recarregado');
+                    } else {
+                        console.log('📴 Modal de histórico não está aberta');
+                    }
                 }
             } catch (error) {
                 console.error('❌ Erro durante sincronização online:', error);
