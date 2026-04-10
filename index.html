@@ -203,6 +203,23 @@
         </div>
     </nav>
 
+    <!-- Debug Panel Button -->
+    <button id="btn-debug-panel" class="fixed bottom-6 right-6 z-50 w-12 h-12 bg-red-500 text-white rounded-full shadow-lg flex items-center justify-center font-black text-xl hover:bg-red-600 transition-all" style="display: none;">🐛</button>
+
+    <!-- Debug Panel Modal -->
+    <div id="debug-modal" class="fixed inset-0 bg-black/50 backdrop-blur-sm hidden z-50 flex items-end">
+        <div class="w-full bg-slate-900 rounded-t-2xl p-4 max-h-[70vh] overflow-y-auto text-white border-t-4 border-red-500">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-black">🐛 Debug Console</h3>
+                <button id="btn-close-debug" class="text-xl font-black">✕</button>
+            </div>
+            <div id="debug-logs" class="space-y-2 text-xs font-mono bg-slate-950 p-3 rounded-lg max-h-96 overflow-y-auto">
+                <p class="text-slate-400">Carregando...</p>
+            </div>
+            <button id="btn-clear-debug" class="mt-4 w-full bg-red-600 hover:bg-red-700 text-white py-2 rounded-lg font-bold transition-all">Limpar Logs</button>
+        </div>
+    </div>
+
     <!-- Tabs de Navegação -->
     <div class="tabs-nav hidden border-b border-white/10 fixed top-[72px] left-0 right-0 z-30 flex justify-around items-center shadow-md bg-white/90 backdrop-blur-md">
         <button id="tab-registo" class="py-4 px-6 text-xs font-black uppercase tracking-widest tab-active transition-all">Registo</button>
@@ -507,6 +524,77 @@
         import { initializeApp, getApp, getApps } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc, query, where, updateDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // ==================== DEBUG LOGGING SYSTEM ====================
+        let debugLogs = [];
+        const MAX_LOGS = 50;
+
+        // Interceptar console.error e console.warn
+        const originalError = console.error;
+        const originalWarn = console.warn;
+
+        console.error = function(...args) {
+            const message = args.map(a => typeof a === 'object' ? JSON.stringify(a) : String(a)).join(' ');
+            debugLogs.unshift(`[ERROR] ${new Date().toLocaleTimeString('pt-PT')} - ${message}`);
+            if (debugLogs.length > MAX_LOGS) debugLogs.pop();
+            
+            // Mostrar botão de debug
+            const debugBtn = document.getElementById('btn-debug-panel');
+            if (debugBtn) {
+                debugBtn.style.display = 'flex';
+                debugBtn.classList.add('animate-bounce');
+            }
+            
+            originalError.apply(console, args);
+        };
+
+        console.warn = function(...args) {
+            const message = args.map(a => typeof a === 'object' ? JSON.stringify(a) : String(a)).join(' ');
+            debugLogs.unshift(`[WARN] ${new Date().toLocaleTimeString('pt-PT')} - ${message}`);
+            if (debugLogs.length > MAX_LOGS) debugLogs.pop();
+            
+            // Mostrar botão de debug
+            const debugBtn = document.getElementById('btn-debug-panel');
+            if (debugBtn) {
+                debugBtn.style.display = 'flex';
+                debugBtn.classList.add('animate-bounce');
+            }
+            
+            originalWarn.apply(console, args);
+        };
+
+        // Event listeners para debug panel
+        document.getElementById('btn-debug-panel').addEventListener('click', () => {
+            const modal = document.getElementById('debug-modal');
+            const logs = document.getElementById('debug-logs');
+            
+            if (debugLogs.length === 0) {
+                logs.innerHTML = '<p class="text-slate-400">Nenhum erro ou aviso encontrado</p>';
+            } else {
+                logs.innerHTML = debugLogs.map((log, i) => 
+                    `<div class="p-2 bg-slate-800 rounded mb-1 border-l-2 ${log.includes('ERROR') ? 'border-red-500 text-red-300' : 'border-yellow-500 text-yellow-300'}">${log}</div>`
+                ).join('');
+            }
+            
+            modal.classList.remove('hidden');
+        });
+
+        document.getElementById('btn-close-debug').addEventListener('click', () => {
+            document.getElementById('debug-modal').classList.add('hidden');
+        });
+
+        document.getElementById('btn-clear-debug').addEventListener('click', () => {
+            debugLogs = [];
+            document.getElementById('debug-logs').innerHTML = '<p class="text-slate-400">Logs limpos</p>';
+            const debugBtn = document.getElementById('btn-debug-panel');
+            if (debugBtn) debugBtn.style.display = 'none';
+        });
+
+        document.getElementById('debug-modal').addEventListener('click', (e) => {
+            if (e.target.id === 'debug-modal') {
+                document.getElementById('debug-modal').classList.add('hidden');
+            }
+        });
 
         const firebaseConfig = {
             apiKey: "AIzaSyAzzIpUAm9rLpieMQ0z3H4hvY-amvaTkpM",
