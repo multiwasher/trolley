@@ -175,109 +175,6 @@
         .photo-toast .icon-check {
             animation: pulse-check 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
         }
-
-        /* Debug Panel Styles */
-        .debug-panel-button {
-            position: fixed;
-            bottom: 100px;
-            right: 20px;
-            z-index: 100;
-            width: 60px;
-            height: 60px;
-            border-radius: 50%;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            border: none;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 24px;
-            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
-            transition: all 0.3s ease;
-        }
-
-        .debug-panel-button:hover {
-            transform: scale(1.1);
-            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
-        }
-
-        .debug-panel-container {
-            position: fixed;
-            bottom: 170px;
-            right: 20px;
-            z-index: 99;
-            width: 320px;
-            background: white;
-            border-radius: 16px;
-            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
-            overflow: hidden;
-            max-height: 0;
-            transition: max-height 0.3s ease;
-        }
-
-        .debug-panel-container.open {
-            max-height: 400px;
-            overflow-y: auto;
-        }
-
-        .debug-panel-header {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 12px 16px;
-            font-weight: bold;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .debug-panel-close {
-            background: none;
-            border: none;
-            color: white;
-            cursor: pointer;
-            font-size: 18px;
-            padding: 0;
-        }
-
-        .debug-panel-content {
-            padding: 12px 16px;
-            font-size: 12px;
-            font-family: 'Monaco', 'Menlo', monospace;
-            color: #333;
-        }
-
-        .debug-item {
-            margin-bottom: 8px;
-            padding: 6px;
-            background: #f5f5f5;
-            border-left: 3px solid #667eea;
-            border-radius: 4px;
-        }
-
-        .debug-item-label {
-            font-weight: bold;
-            color: #667eea;
-            font-size: 11px;
-            text-transform: uppercase;
-        }
-
-        .debug-item-value {
-            color: #333;
-            margin-top: 2px;
-        }
-
-        .status-ok {
-            color: #10b981;
-        }
-
-        .status-warn {
-            color: #f59e0b;
-        }
-
-        .status-error {
-            color: #ef4444;
-        }
     </style>
 </head>
 <body class="min-h-screen flex flex-col pb-24">
@@ -578,45 +475,6 @@
     <!-- Notificação de Foto Capturada -->
     <div id="photo-toast-container" class="fixed bottom-40 left-1/2 transform -translate-x-1/2 z-[110] pointer-events-none"></div>
 
-    <!-- Debug Panel (Mobile-friendly) -->
-    <button id="debug-panel-button" class="debug-panel-button" title="Debug Info">🐛</button>
-    <div id="debug-panel-container" class="debug-panel-container">
-        <div class="debug-panel-header">
-            Diagnóstico 🔍
-            <button id="debug-panel-close" class="debug-panel-close">✕</button>
-        </div>
-        <div class="debug-panel-content">
-            <div class="debug-item">
-                <div class="debug-item-label">Status Online</div>
-                <div class="debug-item-value status-warn" id="debug-online">🔄 Verificando...</div>
-            </div>
-            <div class="debug-item">
-                <div class="debug-item-label">Firebase Auth</div>
-                <div class="debug-item-value status-warn" id="debug-auth">🔄 Inicializando...</div>
-            </div>
-            <div class="debug-item">
-                <div class="debug-item-label">Firebase DB</div>
-                <div class="debug-item-value status-warn" id="debug-db">🔄 Inicializando...</div>
-            </div>
-            <div class="debug-item">
-                <div class="debug-item-label">Utilizador</div>
-                <div class="debug-item-value status-warn" id="debug-user">🔄 Aguardando...</div>
-            </div>
-            <div class="debug-item">
-                <div class="debug-item-label">Pronto para Sincronizar</div>
-                <div class="debug-item-value status-warn" id="debug-sync">❌ Não</div>
-            </div>
-            <div class="debug-item">
-                <div class="debug-item-label">IndexedDB</div>
-                <div class="debug-item-value status-warn" id="debug-idb">🔄 Inicializando...</div>
-            </div>
-            <div class="debug-item">
-                <div class="debug-item-label">Última Sincronização</div>
-                <div class="debug-item-value" id="debug-last-sync">Nunca</div>
-            </div>
-        </div>
-    </div>
-
     <script>
         // Funções de Loading
         window.showLoading = function() {
@@ -679,37 +537,14 @@
 
         const initApp = async () => {
             try {
-                console.log('🚀 Inicializando Firebase...');
                 const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
-                console.log('✅ App Firebase inicializado:', app.name);
-                
                 auth = getAuth(app);
-                console.log('✅ Auth inicializado');
-                
                 db = getFirestore(app);
-                console.log('✅ Firestore inicializado');
-                
                 onAuthStateChanged(auth, async (u) => {
                     user = u;
-                    if (!u) {
-                        console.log('🔐 Autenticação anónima...');
-                        await signInAnonymously(auth);
-                        console.log('✅ Autenticado anonimamente');
-                    } else {
-                        console.log('✅ Utilizador autenticado (UID:', u.uid.substring(0, 8), '...)');
-                    }
-                    // Diagnosticar estado
-                    console.log(`✅ Estado da Sincronização:`, {
-                        online: isOnline,
-                        autenticado: !!user,
-                        firestore: !!db,
-                        pronto: !!(user && db && isOnline)
-                    });
+                    if (!u) await signInAnonymously(auth);
                 });
-            } catch (err) { 
-                console.error('❌ ERRO CRÍTICO ao inicializar Firebase:', err);
-                console.error('Detalhes:', err.message, err.code);
-            }
+            } catch (err) { console.error(err); }
         };
 
         // Verificar se o ID do trolley já existe no Firebase
@@ -905,15 +740,8 @@
             }
         }
 
-        // Detectar suporte WebP para melhor compressão
-        function supportsWebP() {
-            const canvas = document.createElement('canvas');
-            canvas.width = canvas.height = 1;
-            return canvas.toDataURL('image/webp').indexOf('webp') === 5;
-        }
-
-        // Comprimir imagem para 95% quality JPEG (ou WebP se suportado)
-        async function compressImage(dataUrl, quality = 0.95) {
+        // Comprimir imagem para 85% quality
+        async function compressImage(dataUrl, quality = 0.85) {
             return new Promise((resolve) => {
                 const img = new Image();
                 img.onload = () => {
@@ -923,14 +751,11 @@
                     const ctx = canvas.getContext('2d');
                     ctx.drawImage(img, 0, 0);
                     
-                    const mimeType = supportsWebP() ? 'image/webp' : 'image/jpeg';
-                    const qualityValue = supportsWebP() ? Math.max(0.85, quality) : quality;
-                    const compressedUrl = canvas.toDataURL(mimeType, qualityValue);
+                    const compressedUrl = canvas.toDataURL('image/jpeg', quality);
                     const originalSize = new Blob([dataUrl]).size;
                     const compressedSize = new Blob([compressedUrl]).size;
-                    const format = supportsWebP() ? 'WebP' : 'JPEG';
                     
-                    console.log(`🗜️ Imagem comprimida (${format} ${Math.round(qualityValue*100)}%): ${(originalSize/1024).toFixed(0)}KB → ${(compressedSize/1024).toFixed(0)}KB`);
+                    console.log(`🗜️ Imagem comprimida: ${(originalSize/1024).toFixed(0)}KB → ${(compressedSize/1024).toFixed(0)}KB`);
                     resolve(compressedUrl);
                 };
                 img.src = dataUrl;
@@ -1040,7 +865,6 @@
                         }
                         
                         console.log('✨ Sincronização de fotos concluída');
-                        if (synced) lastSyncTime = Date.now();
                         resolve(synced);
                     };
                     
@@ -1146,7 +970,6 @@
                         }
                         
                         console.log('✨ Sincronização de registos concluída');
-                        if (synced) lastSyncTime = Date.now();
                         resolve(synced);
                     };
                     
@@ -1161,295 +984,29 @@
             });
         }
 
-        // Função de Diagnóstico para verificar estado da aplicação
-        window.diagnosticoApp = function() {
-            console.log('🔍 DIAGNÓSTICO DA APLICAÇÃO:');
-            console.log('═══════════════════════════════════════');
-            console.log('Estado de Conectividade:');
-            console.log('  - navigator.onLine:', navigator.onLine);
-            console.log('  - isOnline (var):', isOnline);
-            console.log('');
-            console.log('Estado do Firebase:');
-            console.log('  - auth:', !!auth);
-            console.log('  - db:', !!db);
-            console.log('  - user:', !!user, user ? `(UID: ${user.uid.substring(0, 8)}...)` : '');
-            console.log('');
-            console.log('Estado de IndexedDB:');
-            console.log('  - offlineDB:', !!offlineDB);
-            console.log('  - offlineDBReady:', offlineDBReady);
-            console.log('');
-            console.log('Pronto para sincronizar?:', !!(user && db && isOnline));
-            console.log('═══════════════════════════════════════');
-            
-            // Retornar estado para fácil acesso
-            return {
-                online: isOnline,
-                navOnline: navigator.onLine,
-                fbAuth: !!auth,
-                fbDb: !!db,
-                fbUser: !!user,
-                readyToSync: !!(user && db && isOnline)
-            };
-        };
-
-        // Diagnóstico específico para o botão Iniciar Registo
-        window.testStartRegisto = function(testId = 'TEST123') {
-            console.log('🧪 TESTE DE INICIAR REGISTO:');
-            console.log('═══════════════════════════════════════');
-            
-            const input = document.getElementById('trolley-id-input');
-            const btn = document.getElementById('btn-start-registo');
-            
-            console.log('Estado do Input:');
-            console.log('  - Elemento encontrado:', !!input);
-            console.log('  - Valor atual:', input?.value);
-            console.log('  - Disabled:', input?.disabled);
-            
-            console.log('Estado do Botão:');
-            console.log('  - Elemento encontrado:', !!btn);
-            console.log('  - Disabled:', btn?.disabled);
-            console.log('  - Visível:', btn?.offsetHeight > 0);
-            
-            // Preencher input com teste
-            if (input) {
-                input.value = testId;
-                console.log(`✅ Input preenchido com: "${testId}"`);
-                
-                // Tentar chamar checkTrolleyIdExists
-                console.log('Testando checkTrolleyIdExists()...');
-                checkTrolleyIdExists(testId).then(exists => {
-                    console.log(`  - ID existe: ${exists}`);
-                });
-            }
-            
-            // Listar listeners no botão
-            if (btn) {
-                console.log('Botão configurado - clique para iniciar registo');
-            }
-            
-            console.log('═══════════════════════════════════════');
-            return { input: !!input, btn: !!btn, inputValue: input?.value };
-        };
-
-        // Chamar diagnóstico no console (disponível como window.diagnosticoApp())
-        console.log('💡 Para diagnosticar a app, execute: diagnosticoApp()');
-        console.log('💡 Para testar Iniciar Registo, execute: testStartRegisto()');
-
-        // Função para testar conectividade real (não apenas navigator.onLine)
-        async function testRealConnectivity() {
-            try {
-                // Tentar fazer um fetch HEAD a um recurso pequeno
-                const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), 3000); // 3 segundos timeout
-                
-                const response = await fetch('https://www.google.com/favicon.ico', {
-                    method: 'HEAD',
-                    signal: controller.signal,
-                    mode: 'no-cors'
-                });
-                
-                clearTimeout(timeoutId);
-                return true; // Online
-            } catch (err) {
-                return false; // Offline
-            }
-        }
-
-        // Função para verificar se Firebase está pronto
-        function isFirebaseReady() {
-            return !!auth && !!db && !!user;
-        }
-
-        // Variável global para tracking de última sincronização
-        let lastSyncTime = null;
-
-        // Função para atualizar o painel de debug no UI
-        function updateDebugPanel() {
-            try {
-                // Status Online
-                const onlineEl = document.getElementById('debug-online');
-                if (onlineEl) {
-                    if (isOnline) {
-                        onlineEl.innerHTML = '✅ Online';
-                        onlineEl.className = 'debug-item-value status-ok';
-                    } else {
-                        onlineEl.innerHTML = '❌ Offline';
-                        onlineEl.className = 'debug-item-value status-error';
-                    }
-                }
-
-                // Firebase Auth
-                const authEl = document.getElementById('debug-auth');
-                if (authEl) {
-                    if (auth && user) {
-                        authEl.innerHTML = `✅ Autenticado`;
-                        authEl.className = 'debug-item-value status-ok';
-                    } else if (auth) {
-                        authEl.innerHTML = '🔄 Inicializando...';
-                        authEl.className = 'debug-item-value status-warn';
-                    } else {
-                        authEl.innerHTML = '❌ Não inicializado';
-                        authEl.className = 'debug-item-value status-error';
-                    }
-                }
-
-                // Firebase DB
-                const dbEl = document.getElementById('debug-db');
-                if (dbEl) {
-                    if (db) {
-                        dbEl.innerHTML = '✅ Pronto';
-                        dbEl.className = 'debug-item-value status-ok';
-                    } else {
-                        dbEl.innerHTML = '❌ Não inicializado';
-                        dbEl.className = 'debug-item-value status-error';
-                    }
-                }
-
-                // Utilizador
-                const userEl = document.getElementById('debug-user');
-                if (userEl) {
-                    if (user) {
-                        const uid = user.uid.substring(0, 8);
-                        userEl.innerHTML = `✅ ${uid}...`;
-                        userEl.className = 'debug-item-value status-ok';
-                    } else {
-                        userEl.innerHTML = '❌ Sem utilizador';
-                        userEl.className = 'debug-item-value status-error';
-                    }
-                }
-
-                // Pronto para Sincronizar
-                const syncEl = document.getElementById('debug-sync');
-                if (syncEl) {
-                    if (isFirebaseReady() && isOnline) {
-                        syncEl.innerHTML = '✅ Sim';
-                        syncEl.className = 'debug-item-value status-ok';
-                    } else {
-                        syncEl.innerHTML = '❌ Não';
-                        syncEl.className = 'debug-item-value status-error';
-                    }
-                }
-
-                // IndexedDB
-                const idbEl = document.getElementById('debug-idb');
-                if (idbEl) {
-                    if (offlineDBReady && offlineDB) {
-                        idbEl.innerHTML = '✅ Pronto';
-                        idbEl.className = 'debug-item-value status-ok';
-                    } else if (offlineDBReady) {
-                        idbEl.innerHTML = '🔄 Inicializando...';
-                        idbEl.className = 'debug-item-value status-warn';
-                    } else {
-                        idbEl.innerHTML = '❌ Não disponível';
-                        idbEl.className = 'debug-item-value status-error';
-                    }
-                }
-
-                // Última Sincronização
-                const lastSyncEl = document.getElementById('debug-last-sync');
-                if (lastSyncEl) {
-                    if (lastSyncTime) {
-                        const ago = Math.round((Date.now() - lastSyncTime) / 1000);
-                        if (ago < 60) {
-                            lastSyncEl.innerHTML = `✅ Há ${ago}s`;
-                        } else {
-                            const mins = Math.round(ago / 60);
-                            lastSyncEl.innerHTML = `✅ Há ${mins}m`;
-                        }
-                    } else {
-                        lastSyncEl.innerHTML = '⚫ Nenhuma';
-                    }
-                }
-            } catch (err) {
-                console.error('❌ Erro ao atualizar painel de debug:', err);
-            }
-        }
-
-        // Event listeners para o painel de debug
-        document.addEventListener('DOMContentLoaded', () => {
-            const debugButton = document.getElementById('debug-panel-button');
-            const debugContainer = document.getElementById('debug-panel-container');
-            const debugCloseBtn = document.getElementById('debug-panel-close');
-            
-            if (debugButton && debugContainer) {
-                // Abrir/fechar painel
-                debugButton.addEventListener('click', () => {
-                    debugContainer.classList.toggle('open');
-                    updateDebugPanel();
-                });
-
-                // Fechar painel
-                if (debugCloseBtn) {
-                    debugCloseBtn.addEventListener('click', (e) => {
-                        e.stopPropagation();
-                        debugContainer.classList.remove('open');
-                    });
-                }
-
-                // Fechar ao clicar fora
-                debugContainer.addEventListener('click', (e) => {
-                    if (e.target === debugContainer) {
-                        debugContainer.classList.remove('open');
-                    }
-                });
-            }
-
-            // Atualizar painel a cada 2 segundos
-            setInterval(updateDebugPanel, 2000);
-        });
-        
-        // Inicial update
-        updateDebugPanel();
-
         // Listener para online/offline
         window.addEventListener('online', async () => {
             isOnline = true;
-            console.log('🌐 Aplicação online - Aguardando Firebase estar pronto...');
-            
-            // Aguardar Firebase estar pronto antes de sincronizar
-            let firebaseReady = false;
-            let attempts = 0;
-            while (!firebaseReady && attempts < 10) {
-                if (isFirebaseReady()) {
-                    firebaseReady = true;
-                    console.log('✅ Firebase pronto!');
-                    break;
-                }
-                attempts++;
-                console.log(`⏳ Aguardando Firebase (tentativa ${attempts}/10)...`);
-                await new Promise(resolve => setTimeout(resolve, 500));
-            }
-            
-            if (!firebaseReady) {
-                console.warn('⚠️ Firebase não ficou pronto após 5 segundos');
-            }
-            
-            console.log('Estado:', { user: !!user, db: !!db, isOnline, firebaseReady });
+            console.log('🌐 Aplicação online - Iniciando sincronização...');
             
             try {
-                console.log('🔄 Iniciando sincronização...');
                 const trolleysSynced = await syncPendingTrolleys();
-                console.log(`✅ Trolleys sincronizados: ${trolleysSynced}`);
+                console.log(`Trolleys sincronizados: ${trolleysSynced}`);
                 
                 const photosSynced = await syncPendingPhotos();
-                console.log(`✅ Fotos sincronizadas: ${photosSynced}`);
+                console.log(`Fotos sincronizadas: ${photosSynced}`);
                 
-                if (trolleysSynced || photosSynced) {
-                    console.log(`✨ Sincronização concluída com sucesso!`);
-                    lastSyncTime = Date.now();
-                    
-                    // Aguardar um pouco para os dados aparecerem no Firebase
-                    await new Promise(resolve => setTimeout(resolve, 1500));
-                    
-                    // Recarregar histórico se estiver aberto
-                    const trolleysModal = document.getElementById('trolleys-modal');
-                    if (trolleysModal && !trolleysModal.classList.contains('hidden')) {
-                        console.log('🔄 Recarregando histórico...');
-                        await showTrolleysHistory();
-                        console.log('✅ Histórico recarregado');
-                    } else {
-                        console.log('📴 Modal de histórico não está aberta');
-                    }
+                // Aguardar um pouco para os dados aparecerem no Firebase
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                
+                // Recarregar histórico se estiver aberto
+                const trolleysModal = document.getElementById('trolleys-modal');
+                if (trolleysModal && !trolleysModal.classList.contains('hidden')) {
+                    console.log('🔄 Recarregando histórico...');
+                    await showTrolleysHistory();
+                    console.log('✅ Histórico recarregado');
+                } else {
+                    console.log('📴 Modal de histórico não está aberta');
                 }
             } catch (error) {
                 console.error('❌ Erro durante sincronização online:', error);
@@ -1461,71 +1018,8 @@
             console.log('⚠️ Aplicação offline - Registos e fotos serão guardados localmente');
         });
 
-        // Polling periódico para sincronização automática (a cada 5 segundos)
-        let lastSync = 0;
-        setInterval(async () => {
-            const now = Date.now();
-            const navOnline = navigator.onLine;
-            
-            // Testar conectividade real se navigator.onLine está inconsistente
-            let actualOnline = navOnline;
-            if (navOnline && !isOnline) {
-                // Navigator diz online mas app marcou como offline - testar com fetch
-                console.log('🔍 Testando conectividade real...');
-                actualOnline = await testRealConnectivity();
-                console.log(`  Conectividade real: ${actualOnline}`);
-            }
-            
-            // Se mudou para online
-            if (actualOnline && !isOnline) {
-                console.log('🔄 Detectado mudança de rede para ONLINE - disparando evento...');
-                isOnline = true;
-                window.dispatchEvent(new Event('online'));
-            } 
-            // Se mudou para offline
-            else if (!actualOnline && isOnline) {
-                console.log('⚠️ Detectado mudança de rede para OFFLINE');
-                isOnline = false;
-            }
-            
-            // Se online e tem dados pendentes, sincronizar
-            if (isOnline && isFirebaseReady() && (now - lastSync > 30000)) {
-                // Sincronizar a cada 30 segundos se houver dados pendentes
-                const hasOfflineData = offlineDB ? true : false;
-                if (hasOfflineData) {
-                    console.log('🔄 Executando sincronização automática...');
-                    lastSync = now;
-                    try {
-                        const photosSynced = await syncPendingPhotos();
-                        if (photosSynced) {
-                            console.log(`✅ ${photosSynced} fotos sincronizadas automaticamente`);
-                        }
-                    } catch (err) {
-                        console.warn('⚠️ Erro na sincronização automática:', err.message);
-                    }
-                }
-            }
-        }, 5000); // Verificar a cada 5 segundos
-
         // Inicializar IndexedDB ao carregar app (não bloqueia o carregamento)
         console.log('📋 Iniciando app...');
-        
-        // Verificar se elementos DOM críticos estão prontos
-        const criticalElements = {
-            'btn-start-registo': document.getElementById('btn-start-registo'),
-            'trolley-id-input': document.getElementById('trolley-id-input'),
-            'setup-screen': document.getElementById('setup-screen'),
-            'app-container': document.getElementById('app-container')
-        };
-        
-        Object.entries(criticalElements).forEach(([name, el]) => {
-            if (el) {
-                console.log(`✅ DOM pronto: ${name}`);
-            } else {
-                console.error(`❌ DOM FALTANDO: ${name}`);
-            }
-        });
-        
         (async () => {
             try {
                 console.log('🔄 Tentando inicializar IndexedDB...');
@@ -2394,105 +1888,60 @@
         document.getElementById('btn-view-history').addEventListener('click', showTrolleysHistory);
 
         document.getElementById('btn-start-registo').addEventListener('click', async () => {
-            try {
-                console.log('🔘 Clique em Iniciar Registo');
-                
-                const input = document.getElementById('trolley-id-input');
-                trolleyId = input.value.trim().toUpperCase();
-                
-                console.log(`✍️ ID inserido: "${trolleyId}" (comprimento: ${trolleyId.length})`);
-                
-                if (trolleyId.length < 2) {
-                    console.warn('⚠️ ID muito curto');
-                    alert('Por favor, insira um ID com pelo menos 2 caracteres');
-                    return;
-                }
-                
-                console.log(`🔍 Verificando se ID "${trolleyId}" já existe...`);
-                console.log(`   Estado atual:`, { isOnline, db: !!db, offlineDBReady });
-                
-                // Verificar se o ID já existe no Firebase (sincroniza entre dispositivos)
-                const existsInFirebase = await checkTrolleyIdExists(trolleyId);
-                console.log(`   Resultado: ${existsInFirebase ? 'EXISTE' : 'DISPONÍVEL'}`);
-                
-                if (existsInFirebase) {
-                    console.warn(`⚠️ ID "${trolleyId}" já existe`);
-                    alert(`⚠️ O ID "${trolleyId}" já existe! Utilize um ID diferente.`);
-                    return;
-                }
-                
-                console.log(`✅ ID "${trolleyId}" disponível - iniciando registo...`);
-                
-                document.getElementById('display-trolley-id').innerText = trolleyId;
-                
-                // Atualizar data e hora de registo
-                const now = new Date();
-                const dataRegisto = now.toLocaleString('pt-PT');
-                document.getElementById('display-registration-date').innerText = dataRegisto;
-                
-                // Inicializar o registo no sessionArchive com a data
-                if (!sessionArchive[trolleyId]) {
-                    sessionArchive[trolleyId] = [];
-                }
-                // Guardar a data de registo no primeiro elemento (metadata)
-                sessionArchive[trolleyId]._registrationDate = dataRegisto;
-                localStorage.setItem('trolley_session_archive', JSON.stringify(sessionArchive));
-                
-                // Guardar registo em IndexedDB se estiver offline
-                if (!isOnline && offlineDBReady) {
-                    const saved = await saveTrolleyOffline({
-                        trolleyId: trolleyId,
-                        createdAt: Date.now(),
-                        dataRegisto: dataRegisto
-                    });
-                    if (saved) {
-                        console.log(`📴 Registo guardado offline: ${trolleyId}`);
-                    } else {
-                        console.warn(`⚠️ Erro ao guardar registo offline: ${trolleyId}`);
-                    }
-                } else if (!isOnline) {
-                    console.warn('⚠️ IndexedDB ainda não está pronto - registo será guardado apenas em localStorage');
-                }
-                
-                // Inicializar contador de fotos a 0
-                document.getElementById('display-total-photos').innerText = '0';
-                
-                console.log(`🎉 Mostrando app - trolleyId: ${trolleyId}`);
-                document.getElementById('setup-screen').classList.add('hidden');
-                document.getElementById('app-container').classList.remove('hidden');
-                document.getElementById('footer-nav').classList.remove('hidden');
-                document.querySelector('.tabs-nav').classList.remove('hidden');
-                
-                console.log('✅ Registo iniciado com sucesso');
-                renderStep();
-                history.pushState({ app: 'grid' }, '');
-            } catch (error) {
-                console.error('❌ ERRO ao iniciar registo:', error.message);
-                console.error('Stack:', error.stack);
-                alert(`❌ Erro ao iniciar registo: ${error.message}`);
-                throw error; // Re-throw para debug
+            trolleyId = document.getElementById('trolley-id-input').value.trim().toUpperCase();
+            if (trolleyId.length < 2) return;
+            
+            // Verificar se o ID já existe no Firebase (sincroniza entre dispositivos)
+            const existsInFirebase = await checkTrolleyIdExists(trolleyId);
+            if (existsInFirebase) {
+                alert(`⚠️ O ID "${trolleyId}" já existe! Utilize um ID diferente.`);
+                return;
             }
+            
+            document.getElementById('display-trolley-id').innerText = trolleyId;
+            
+            // Atualizar data e hora de registo
+            const now = new Date();
+            const dataRegisto = now.toLocaleString('pt-PT');
+            document.getElementById('display-registration-date').innerText = dataRegisto;
+            
+            // Inicializar o registo no sessionArchive com a data
+            if (!sessionArchive[trolleyId]) {
+                sessionArchive[trolleyId] = [];
+            }
+            // Guardar a data de registo no primeiro elemento (metadata)
+            sessionArchive[trolleyId]._registrationDate = dataRegisto;
+            localStorage.setItem('trolley_session_archive', JSON.stringify(sessionArchive));
+            
+            // Guardar registo em IndexedDB se estiver offline
+            if (!isOnline && offlineDBReady) {
+                const saved = await saveTrolleyOffline({
+                    trolleyId: trolleyId,
+                    createdAt: Date.now(),
+                    dataRegisto: dataRegisto
+                });
+                if (saved) {
+                    console.log(`📴 Registo guardado offline: ${trolleyId}`);
+                } else {
+                    console.warn(`⚠️ Erro ao guardar registo offline: ${trolleyId}`);
+                }
+            } else if (!isOnline) {
+                console.warn('⚠️ IndexedDB ainda não está pronto - registo será guardado apenas em localStorage');
+            }
+            
+            // Inicializar contador de fotos a 0
+            document.getElementById('display-total-photos').innerText = '0';
+            
+            document.getElementById('setup-screen').classList.add('hidden');
+            document.getElementById('app-container').classList.remove('hidden');
+            document.getElementById('footer-nav').classList.remove('hidden');
+            document.querySelector('.tabs-nav').classList.remove('hidden');
+            renderStep();
+            history.pushState({ app: 'grid' }, '');
         });
 
         async function savePhoto(dataUrl) {
             console.log(`💾 savePhoto() - Guardando foto para passo ${currentStep}`);
-            
-            // Aguardar Firebase estar pronto (timeout 3 segundos)
-            let firebaseReady = isFirebaseReady();
-            if (!firebaseReady) {
-                console.log('⏳ Aguardando Firebase inicializar...');
-                for (let i = 0; i < 6; i++) {
-                    await new Promise(resolve => setTimeout(resolve, 500));
-                    if (isFirebaseReady()) {
-                        firebaseReady = true;
-                        console.log('✅ Firebase ficou pronto!');
-                        break;
-                    }
-                }
-                if (!firebaseReady) {
-                    console.warn('⚠️ Firebase ainda não está pronto após 3 segundos');
-                }
-            }
             
             const photoIndex = currentPhotos[currentStep].length + 1;
             const dataHora = new Date().toLocaleString('pt-PT');
@@ -2538,10 +1987,10 @@
             syncIcon.classList.remove('hidden');
             
             try {
-                // Usar imagem já capturada em qualidade alta (95%)
-                console.log(`📸 Foto capturada em qualidade 95%`);
-                const base64Data = dataUrl.split(',')[1];
-                const compressedDataUrl = dataUrl;
+                // Comprimir imagem (85% quality)
+                console.log(`🗜️ Comprimindo imagem...`);
+                const compressedDataUrl = await compressImage(dataUrl, 0.85);
+                const base64Data = compressedDataUrl.split(',')[1];
                 
                 // Guardar em IndexedDB para backup offline
                 const photoData = {
@@ -2559,7 +2008,6 @@
                 if (user && db && isOnline) {
                     try {
                         console.log(`📤 Sincronizando com Firebase... (${filename})`);
-                        console.log('Estado:', { user: !!user, db: !!db, isOnline, trolleyId, step: currentStep });
                         
                         await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'photo_urls'), {
                             trolleyId: String(trolleyId),
@@ -2593,14 +2041,11 @@
                         showSyncNotification(true);
                     } catch (firebaseError) {
                         console.warn(`⚠️ Erro ao sincronizar (guardado offline): ${firebaseError.message}`);
-                        console.warn('Firebase Error:', firebaseError.code);
                         showSyncNotification(false, true); // Guardado offline
                     }
                 } else {
-                    // Offline ou Firebase não inicializado - diagnostic
-                    const reason = !user ? 'SEM AUTENTICAÇÃO' : !db ? 'FIRESTORE NÃO PRONTO' : 'OFFLINE';
-                    console.warn(`⚠️ Foto guardada OFFLINE (Motivo: ${reason})`);
-                    console.warn('Estado:', { user: !!user, db: !!db, isOnline, navigator_online: navigator.onLine });
+                    // Offline - guardar para sincronização posterior
+                    console.log(`📴 Offline - Foto guardada para sincronização automática`);
                     showSyncNotification(false, true); // Guardado offline
                 }
             } catch (error) {
@@ -2623,18 +2068,7 @@
                 toast.innerHTML = '☁️ Sincronizado com sucesso';
             } else if (offline) {
                 toast.classList.add('border-blue-400', 'text-blue-700');
-                // Mostrar motivo mais específico
-                let reason = '💾 Guardado offline';
-                if (!isOnline) {
-                    reason += ' (app offline)';
-                } else if (!user) {
-                    reason += ' (não autenticado)';
-                } else if (!db) {
-                    reason += ' (Firebase não pronto)';
-                } else {
-                    reason += ' (será sincronizado)';
-                }
-                toast.innerHTML = reason;
+                toast.innerHTML = '💾 Guardado offline (sincronizará depois)';
             } else {
                 toast.classList.add('border-amber-400', 'text-amber-700');
                 toast.innerHTML = '⚠️ Erro ao sincronizar (salvo localmente)';
@@ -2642,12 +2076,12 @@
             
             container.appendChild(toast);
             
-            // Remover após 4 segundos
+            // Remover após 3 segundos
             setTimeout(() => {
                 toast.style.opacity = '0';
                 toast.style.transition = 'opacity 0.3s ease-out';
                 setTimeout(() => toast.remove(), 300);
-            }, 4000);
+            }, 3000);
         }
 
         // Função para mostrar notificação de foto capturada
@@ -2905,28 +2339,16 @@
             const c = document.getElementById('canvas');
             c.width = v.videoWidth; c.height = v.videoHeight;
             c.getContext('2d').drawImage(v, 0, 0);
-            // Capturar com qualidade alta (95%) para melhor detalhe
-            savePhoto(c.toDataURL('image/jpeg', 0.95));
+            savePhoto(c.toDataURL('image/jpeg', 0.8));
         });
 
         document.getElementById('btn-open-camera').addEventListener('click', async () => {
             try {
-                // Otimizar constraints da câmara para capturar em alta resolução
-                const stream = await navigator.mediaDevices.getUserMedia({ 
-                    video: { 
-                        facingMode: "environment",
-                        width: { ideal: 1920 },      // Alta resolução horizontal
-                        height: { ideal: 1440 },     // Alta resolução vertical
-                        aspectRatio: { ideal: 4/3 } // Aspecto otimizado
-                    } 
-                });
-                const video = document.getElementById('video');
-                video.srcObject = stream;
+                const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
+                document.getElementById('video').srcObject = stream;
                 document.getElementById('camera-modal').classList.remove('hidden');
-                console.log(`📹 Câmara ativada: ${video.videoWidth}x${video.videoHeight}px`);
             } catch(e) {
                 console.error("Erro ao aceder câmara:", e);
-                alert('Erro ao aceder à câmara. Verifique as permissões.');
             }
         });
 
